@@ -1,0 +1,20 @@
+#define Bilde_VERSION_MAJOR @Bilde_VERSION_MAJOR@
+#define Bilde_VERSION_MINOR @Bilde_VERSION_MINOR@
+
+#ifdef WITH_IPL_CONTAINER
+#include <opencv/cv.h>
+#endif
+
+#ifdef WITH_CVMAT_CONTAINER
+#define OPENCV_MAJOR_VERSION  @OPENCV_MAJOR@
+
+#if OPENCV_MAJOR_VERSION==3
+#include <opencv2/imgcodecs.hpp>
+#endif
+
+#include <opencv2/opencv.hpp>
+#endif
+
+#ifdef WITH_TIFF_IO
+#include <tiffio.h>
+#endif
