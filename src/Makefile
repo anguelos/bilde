@@ -7,7 +7,7 @@ LIBS := opencv_ml opencv_objdetect opencv_stitching opencv_superres \
 	opencv_videostab opencv_calib3d opencv_features2d opencv_highgui opencv_video \
 	opencv_photo opencv_imgproc opencv_flann opencv_imgcodecs opencv_shape \
 	opencv_core opencv_videoio \
-	protobuf webp png tiff jasper  uuid lzma jpeg z
+	protobuf webp png tiff uuid lzma jpeg z
 
 # Build with g++
 CXX := g++
