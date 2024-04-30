@@ -133,7 +133,7 @@ int main(int argc,char**argv){
             perFileTimer.tic();
             cv::Mat tmpInImg;
             //tmpInImg=getRGB2PCA(*iterFname);
-            tmpInImg=cv::imread(*iterFname, CV_LOAD_IMAGE_GRAYSCALE);
+            tmpInImg=cv::imread(*iterFname, cv::IMREAD_GRAYSCALE);
             cv::Mat inImg=cv::Mat::ones(tmpInImg.rows+whiteBorderSize*2,tmpInImg.cols+whiteBorderSize*2 , CV_8U)*255;
             tmpInImg.copyTo(inImg.colRange(whiteBorderSize,inImg.cols-whiteBorderSize).rowRange(whiteBorderSize,inImg.rows-whiteBorderSize));
 

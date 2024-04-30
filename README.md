@@ -44,3 +44,27 @@ Run:
 ```bash
 wine /tmp/lbp_features2.exe -i ./sample_data/PICT2466.png > /tmp/features.csv
 ```
+
+Compiling in ubuntu:
+```bash
+sudo apt-get install libopencv-dev libhighgui-dev libprotobuf-dev libwebp-dev #  depending on your system you might need other packages
+cd src
+make lbpFeatures2
+```
+
+Running Feature extraction for the SRS-LBP pipeline:
+```bash
+./src/lbpFeatures2 -r 1 2 3 4 5 6 7 8 9 10 11 12 -i ./sample_data/bw_text.tiff >> /tmp/features.csv
+```
+
+Citation:
+```python
+@inproceedings{nicolaou2015sparse,
+  title={Sparse radial sampling LBP for writer identification},
+  author={Nicolaou, Anguelos and Bagdanov, Andrew D and Liwicki, Marcus and Karatzas, Dimosthenis},
+  booktitle={2015 13th International Conference on Document Analysis and Recognition (ICDAR)},
+  pages={716--720},
+  year={2015},
+  organization={IEEE}
+}
+```

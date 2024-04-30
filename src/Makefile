@@ -14,7 +14,7 @@ CXX := g++
 
 # Flags
 CXXFLAGS := -std=c++11
-CPPFLAGS := -I../include
+CPPFLAGS := -I../include -I/usr/include/opencv4/
 LDLIBS := $(addprefix -l, $(LIBS))
 
 # Source files and target executables
