@@ -36,7 +36,7 @@ template <int BITDEPTH> void __lofBinarization__(Buffer<t_uint8> outImg,Buffer<t
     Buffer<t_uint8> thresholded(dividedImg.width,dividedImg.height);
     bilde::operations::essential::__setTo__<t_uint8>(outImg,0);
     //operations::essential::__incrementBy__<t_uint8>(dividedImg,dividedImg,1);
-    for(int radius=((dividedImg.width>dividedImg.height)?dividedImg.width/4:dividedImg.height/4);radius<10;radius=radius/2){
+    for(int radius=((dividedImg.width>dividedImg.height)?dividedImg.width/4:dividedImg.height/4);radius>10;radius=radius/2){
 
         bilde::util::timer::Timer tLof;
         ih.getIterator(radius).applyFilter(filter,operations::__histogram__::__HistogramOperations__<t_uint32,NBBINS,false>::__getOtsu__);
@@ -47,6 +47,7 @@ template <int BITDEPTH> void __lofBinarization__(Buffer<t_uint8> outImg,Buffer<t
         operations::essential::__pixelWiseThreshold__<t_uint8>(thresholded,dividedImg,filter,255,0);
         operations::essential::__pixelWiseMax__<t_uint8>(outImg,thresholded,outImg);
     }
+
     //operations::essential::__pixelWiseMin__<t_uint8>(outImg,outImg,getOtsuBinarization(filter));
     //getOtsuBinarization(filter).copyTo(outImg);
     //filter.copyTo(outImg);

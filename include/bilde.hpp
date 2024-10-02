@@ -14,13 +14,19 @@
 
 
 
-#include "containers/buffer_container.hpp"
-#include "containers/octave_container.hpp"
+//#include "containers/buffer_container.hpp"
+//#include "containers/octave_container.hpp"
+#ifdef CV_VERSION
 #include "containers/cvmat_container.hpp"
-#include "containers/boost_numpy_container.hpp"
+#endif
+//#include "containers/boost_numpy_container.hpp"
+#ifdef PYBIND11_INCLUDED
+#include "containers/nppybind11_container.hpp"
+#endif
+#include "containers/nppybind11_container.hpp"
 
-#include "io/libpng.hpp"
-#include "io/libtiff.hpp"
+//#include "io/libpng.hpp"
+//#include "io/libtiff.hpp"
 
 #include "operations/colorspace.hpp"
 #include "operations/connected_component_labeling.hpp"

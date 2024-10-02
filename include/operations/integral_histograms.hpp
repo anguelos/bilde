@@ -253,7 +253,7 @@ template <typename BINT,int NBBINS,bool ISCUMMULATIVE> struct IntegralHistogram{
         int x,y,bin;
         t_uint8* inRow;
         BINT* topHist;
-        BINT* leftHist;
+        //BINT* leftHist;
         BINT* curHist;
         inRow=img.getRow(0);
         memset(data,0,NBBINS*sizeof(BINT));
@@ -447,7 +447,7 @@ template <typename BINT,int NBBINS,bool ISCUMMULATIVE> struct IntegralHistogram{
         }
         void applyFilter(Buffer<t_uint8> outImg,t_HistogramFeatureIVoidOInt func){
             t_uint8* outRow;
-            const BINT* curHist;
+            //const BINT* curHist;
             int x,y;
             __curRow__=0;
             for(y=0;y<height;y++){

@@ -32,25 +32,24 @@ namespace __lbp_util__{
 template <typename LBPTYPE=t_uint8> struct LbpIterator{
     static int calculateOtsuThreshold(const std::vector<int>& hist){
         //adapted from http://zerocool.is-a-geek.net/java-image-binarization/
-        int k;
         long long int total = 0; //nbPixels
         double varBetween;
         long long int sum = 0; //intencity*occurences
-        for (k = 0; k < hist.size(); k++) {
+        for (size_t k = 0; k < hist.size(); k++) {
             total += hist[k];
-            sum += k * hist[k];
+            sum += int(k) * hist[k];
         }
         double sumB = 0;
         int wB = 0;
         int wF = 0;
         double varMax = 0;
         int threshold = 0;
-        for (int t = 0; t < hist.size(); t++) {
+        for (size_t t = 0; t < hist.size(); t++) {
             wB += hist[t]; // Weight Background
             if (wB == 0)continue;
             wF = total - wB; // Weight Foreground
             if (wF == 0)break;
-            sumB += (double) (t * hist[t]);
+            sumB += (double) (int(t) * hist[t]);
             double mB = sumB / wB; // Mean Background
             double mF = (sum - sumB) / wF; // Mean Foreground
             // Calculate Between Class Variance
@@ -58,7 +57,7 @@ template <typename LBPTYPE=t_uint8> struct LbpIterator{
             // Check if new maximum found
             if (varBetween >= varMax) {
                 varMax = varBetween;
-                threshold = t;
+                threshold = int(t);
             }
         }
         sum=0;
@@ -95,7 +94,7 @@ template <typename LBPTYPE=t_uint8> struct LbpIterator{
         int threshold;
         TwoTailFunctor(unsigned int thr=0):threshold(thr){}
         bool operator()(int v1,int v2){
-            return (v1+threshold>v2)*(v1-threshold<v2);
+            return (v1+threshold>v2) && (v1-threshold<v2);
         }
         friend std::ostream & operator<<(std::ostream & out, const TwoTailFunctor& f){
             out<<"|v1+"<<f.threshold<<"<v2|";return out;
@@ -242,10 +241,10 @@ template <typename LBPTYPE=t_uint8> struct LbpIterator{
         static int removeDuplicates(std::vector<int>& offsets,std::vector<t_real>& coefficients){
             //removes duplicates created from bilinear interpolation of consecutive pixels
             std::map<int,t_real> coefficientMap;
-            for(int k=0;k<offsets.size();k++){
+            for(size_t k=0;k<offsets.size();k++){
                 coefficientMap.insert(std::pair<int,t_real>(offsets[k],0));
             }
-            for(int k=0;k<offsets.size();k++){
+            for(size_t k=0;k<offsets.size();k++){
                 coefficientMap[offsets[k]]+=coefficients[k];
             }
             offsets.resize(coefficientMap.size());

@@ -9,7 +9,7 @@
 #define CVMAT_CONTAINER_HPP_
 
 #define __OPENCV_CORE_HPP__
-#include <opencv/cv.h>
+//#include <opencv/cv.h>
 
 #ifdef  __OPENCV_CORE_HPP__
 
