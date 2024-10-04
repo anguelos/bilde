@@ -1,16 +1,14 @@
-cmake_minimum_required (VERSION 2.6)
+cmake_minimum_required (VERSION 3.12)
 project (Bilde)
 
 set (Tutorial_VERSION_MAJOR 0)
 set (Tutorial_VERSION_MINOR 1)
 
 
-set (PY_V 3.4)
-set (PYV 34)
 set (ENABLE_PYTHON)
 
 #set (OPENCV_MAJOR "3")
-set (OPENCV_MAJOR "2")
+set (OPENCV_MAJOR "4")
 
 
 
@@ -103,51 +101,26 @@ if(${OPENCV_MAJOR} STREQUAL "3" OR ${OPENCV_MAJOR} STREQUAL "2")
 endif()
 
 
-if(${ENABLE_PYTHON})
+if(${OPENCV_MAJOR} STREQUAL "4")
+    find_package(OpenCV REQUIRED )
+    include_directories( ${OpenCV_INCLUDE_DIRS} )
 
+    if(${OPENCV2_CORE_LIB} STREQUAL "OPENCV2_CORE_LIB-NOTFOUND")
+        message(FATAL_ERROR "Couldn't find the 'OPENCV2 CORE' library")
+    endif()    
+    message(STATUS "Found 'OPENCV2 CORE' at: ${OPENCV2_CORE_LIB}")
     find_library(
-        PYTHON_LIB python${PY_V}m
-        #"$PATHS" "${}"
-        HINTS "/usr/local/lib" "/opt/local/lib" "/usr/lib" "/usr/lib/x86_64-linux-gnu"
+        OPENCV2_HIGHGUI_LIB opencv_highgui
+        HINTS "/usr/local/lib"  "/opt/local/lib" "/usr/lib" "/usr/lib/x86_64-linux-gnu"
     )
-    if(${PYTHON_LIB} STREQUAL "PYTHON_LIB-NOTFOUND")
-        message(FATAL_ERROR "Couldn't find the 'PYTHON' ${PY_V} library")
+    #opencv2_highgui
+    if(${OPENCV2_HIGHGUI_LIB} STREQUAL "OPENCV2_HIGHGUI_LIB-NOTFOUND")
+        message(FATAL_ERROR "Couldn't find the 'OPENCV2 HIGHGUI' library")
     endif()
-    message(STATUS "Found 'PYTHON ${PY_V}' at: ${PYTHON_LIB}")
-
-
-    find_library(
-        BOOST_PYTHON_LIB boost_python-py${PYV}
-        #"$PATHS" "${}"
-        HINTS  "/opt/local/lib" "/usr/lib" "/usr/lib/x86_64-linux-gnu"
-    )
-    if(${BOOST_PYTHON_LIB} STREQUAL "BOOST_PYTHON_LIB-NOTFOUND")
-        message(FATAL_ERROR "Couldn't find the 'BOOST PYTHON' boost_python-py${PYV} library")
-    endif()
-    message(STATUS "Found 'BOOST PYTHON ${PY_V}' at: ${BOOST_PYTHON_LIB}")
-
-    #find_library(
-    #    BOOST_SYSTEM_LIB boost_system-mt
-    #    #"$PATHS" "${}"
-    #    HINTS "/opt/local/lib" "/usr/lib" "/usr/lib/x86_64-linux-gnu"
-    #)
-    #
-    #if(${BOOST_SYSTEM_LIB} STREQUAL "BOOST_SYSTEM_LIB-NOTFOUND")
-    #    message(FATAL_ERROR "Couldn't find the 'BOOST SYSTEM' library")
-    #endif()
-    message(STATUS "Found 'BOOST SYSTEM' at: ${BOOST_SYSTEM_LIB}")
-
-    find_library(
-        BOOST_NUMPY_LIB boost_numpy
-        #"$PATHS" "${}"
-        HINTS "/opt/local/lib" "/opt/local/local/lib" "/usr/lib" "/usr/lib/x86_64-linux-gnu"
-    )
-    if(${BOOST_NUMPY_LIB} STREQUAL "BOOST_NUMPY_LIB-NOTFOUND")
-        message(FATAL_ERROR "Couldn't find the 'BOOST NUMPY' library")
-    endif()
-    message(STATUS "Found 'BOOST NUMPY' at: ${BOOST_NUMPY_LIB}")
+    message(STATUS "Found 'OPENCV2 HIGHGUI' at: ${OPENCV2_HIGHGUI_LIB}")
 
 endif()
+
 
 configure_file (  "${PROJECT_SOURCE_DIR}/include/config.hpp.in"  "${PROJECT_BINARY_DIR}/include/config.hpp" )
 include_directories("${PROJECT_BINARY_DIR}")
@@ -193,13 +166,8 @@ else()
     add_executable(lbpTransform src/lbpTransform.cc ${HEADERS})
     target_link_libraries (lbpTransform ${OPENCV2_CORE_LIB} ${OPENCV2_HIGHGUI_LIB})
 
-
     add_executable(lbpFeatures2 ./src/lbpFeatures2.cc ${HEADERS})
     target_link_libraries (lbpFeatures2 ${OPENCV2_CORE_LIB} ${OPENCV2_HIGHGUI_LIB})
 
 
-    if(${ENABLE_PYTHON})
-        add_library(npbilde SHARED src/npbilde.cc ${HEADERS})
-        target_link_libraries (npbilde ${OPENCV2_CORE_LIB} ${OPENCV2_HIGHGUI_LIB} ${BOOST_PYTHON_LIB} ${BOOST_NUMPY_LIB} ${PYTHON_LIB})
-    endif()
 endif()

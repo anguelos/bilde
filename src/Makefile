@@ -1,4 +1,4 @@
-# Makefile for building most BILDE executables
+# Stand alone Makefile for building most BILDE executables
 
 # ubuntu 18.04: sudo apt install libopencv-dev libboost-dev libprotobuf-dev
 
