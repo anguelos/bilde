@@ -140,15 +140,12 @@ template<typename T> struct Buffer {
         ///This is where the magic happens. A Buffer is created as long as there is a container type
         ///for typename K. The buffer will only wrap the memory storage. It is up to the user of the
         /// library to make sure, that the memory beeing wrapped is not dealocated.
-			__data__((t_byte*) (container::ContainerWrapper<K, T>::getFirstRow(obj))),
-					width(container::ContainerWrapper<K, T>::getWidth(obj)),
-					height(container::ContainerWrapper<K, T>::getHeight(obj)),
-					__linestride__(container::ContainerWrapper<K, T>::getByteLinestride(obj)),
-					__ownedStorage__(container::ContainerWrapper<K, T>::takeStorageOwnership(obj))
-					{
-		if(container::ContainerWrapper<K, T>::canWrap(obj)){
-			//std::cerr<<"Can wrap\n";
-		}else{
+				__ownedStorage__(container::ContainerWrapper<K, T>::takeStorageOwnership(obj)),
+				__data__((t_byte*) (container::ContainerWrapper<K, T>::getFirstRow(obj))),
+				width(container::ContainerWrapper<K, T>::getWidth(obj)),
+				height(container::ContainerWrapper<K, T>::getHeight(obj)),
+				__linestride__(container::ContainerWrapper<K, T>::getByteLinestride(obj)){
+		if(!container::ContainerWrapper<K, T>::canWrap(obj)){
 			std::cerr<<"Cant wrap\n";
 			std::cerr<<"Cant wrap, throwing";
 			throw "cant wrap";
@@ -168,8 +165,7 @@ template<typename T> struct Buffer {
         width(1+rightMost-leftMost),height(1+bottomMost-topMost),__linestride__(img.__linestride__){}
 
     void copyFrom(Buffer<T> in){
-        int x,y;
-        for(y=0;y<height;y++){
+        for(t_sz y=0;y<height;y++){
             memcpy(in.getRow(y),this->getRow(y),width*sizeof(T));
         }
     }

@@ -7,6 +7,9 @@
 
 #ifndef KNN_HPP_
 #define KNN_HPP_
+
+#include "wrapping_api.hpp"
+
 namespace bilde {
 namespace util {
 namespace knn {
@@ -15,7 +18,7 @@ struct L2Distance {
 	double operator()(const std::vector<double>& v1,
 			const std::vector<double>& v2) {
 		double res = 0;
-		for (int k = 0; k < v1.size(); k++) {
+		for (t_sz k = 0; k < v1.size(); k++) {
 			res += ((v1[k] - v2[k]) * (v1[k] - v2[k]));
 		}
 		return sqrt(res);
@@ -27,7 +30,7 @@ struct LInfDistance {
 			const std::vector<double>& v2) {
 		double res = 0;
 		double d;
-		for (int k = 0; k < v1.size(); k++) {
+		for (t_sz k = 0; k < v1.size(); k++) {
 			d=((v1[k] > v2[k]) * (v1[k] - v2[k])
 					+ (v1[k] <= v2[k]) * (v2[k] - v1[k]));
 			res = d>res?d:res;
@@ -41,7 +44,7 @@ struct L1Distance {
 	double operator()(const std::vector<double>& v1,
 			const std::vector<double>& v2) {
 		double res = 0;
-		for (int k = 0; k < v1.size(); k++) {
+		for (t_sz k = 0; k < v1.size(); k++) {
 			res += ((v1[k] > v2[k]) * (v1[k] - v2[k])
 					+ (v1[k] <= v2[k]) * (v2[k] - v1[k]));
 		}
@@ -54,8 +57,8 @@ template<typename DIST> std::vector<std::pair<double, int> > sortByDistance(
 		const std::vector<std::vector<double> >& ps) {
 	DIST dist;
 	std::vector<std::pair<double, int> > res;
-	for (int k = 0; k < ps.size(); k++) {
-		res.push_back(std::pair<double, int>(dist(v, ps[k]), k));
+	for (t_sz k = 0; k < ps.size(); k++) {
+		res.push_back(std::pair<double, int>(dist(v, ps[k]), int(k)));
 	}
 	std::sort(res.begin(), res.end());
 	return res;
@@ -66,10 +69,10 @@ template<typename DIST> std::vector<std::vector<std::pair<double, int> > > sortB
 		const std::vector<std::vector<double> >& testSet) {
 	DIST dist;
 	std::vector<std::vector<std::pair<double, int> > > res;
-	for (int j = 0; j < testSet.size(); j++) {
+	for (t_sz j = 0; j < testSet.size(); j++) {
 		std::vector<std::pair<double, int> > tmp;
-		for (int k = 0; k < trainSet.size(); k++) {
-			tmp.push_back(std::pair<double, int>((dist(testSet[j], trainSet[k])), k));
+		for (t_sz k = 0; k < trainSet.size(); k++) {
+			tmp.push_back(std::pair<double, int>((dist(testSet[j], trainSet[k])), int(k)));
 		}
 		std::sort(tmp.begin(), tmp.end());
 		res.push_back(tmp);

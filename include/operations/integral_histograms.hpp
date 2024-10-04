@@ -191,14 +191,13 @@ template<typename T,int NBBINS,bool ISCUMMULATIVE> struct Histogram: public bild
     template <typename K>
     Histogram(Buffer<K> in){
         double min=PixelMetrics<K>::defaultBg;
-        double max=PixelMetrics<K>::defaultFg;
-        double ratio=(max-min)*(NBBINS-1);
-        int x,y;
+        //double max=PixelMetrics<K>::defaultFg;
+        //double ratio=(max-min)*(NBBINS-1);
         K* inRow;
         this->setTo(0);
-        for(y=0;y<in.height;y++){
+        for(t_sz y=0;y<in.height;y++){
             inRow=in.getRow(y);
-            for(x=0;x<in.width;x++){
+            for(t_sz x=0;x<in.width;x++){
                 this->data[int(round(inRow[x]-min))]++;
             }
         }
@@ -234,21 +233,14 @@ template <typename BINT,int NBBINS,bool ISCUMMULATIVE> struct IntegralHistogram{
     const int height;
     const t_sint64 binLinestride;
     const t_sint64 byteLinestride;
-    BINT* const __getHistogramAt__(int x,int y){
-        x=x*(x>0);
-        if(x>=width){x=width-1;}
-        y=y*(y>0);
-        if(y>=height){y=height-1;}
-
-        //x=x*(x>0)+(width-(x+1))*(x>width);
-        //y=y*(y>=0)+(height-(y+1))*(y>=height);
-        //std::cerr<<"y="<<y<<" x="<<x<<"\n";
-        return &(__data__[x*NBBINS+y*binLinestride]);
-    }
-    IntegralHistogram(Buffer<t_uint8> img):width(img.width),height(img.height),
+    
+    IntegralHistogram(Buffer<t_uint8> img):
         sharedData(new BINT[img.width*img.height*NBBINS]),
-        __data__((BINT*)(sharedData.get())),binLinestride(img.width*NBBINS),
-        byteLinestride(img.width*NBBINS*sizeof(BINT)){
+            __data__((BINT*)(sharedData.get())),
+            width(img.width),
+            height(img.height),
+            binLinestride(img.width*NBBINS),
+            byteLinestride(img.width*NBBINS*sizeof(BINT)){
         BINT data[NBBINS];
         int x,y,bin;
         t_uint8* inRow;
@@ -267,7 +259,6 @@ template <typename BINT,int NBBINS,bool ISCUMMULATIVE> struct IntegralHistogram{
                 inRow=img.getRow(y);
                 memset(data,0,NBBINS*sizeof(BINT));
                 for(x=0;x<width;x++){
-                    data[inRow[x]]++;
                     curHist=__data__+y*binLinestride+x*NBBINS;
                     topHist=__data__+(y-1)*binLinestride+x*NBBINS;
                     curHist[0]=topHist[0]+data[0];
@@ -303,6 +294,18 @@ template <typename BINT,int NBBINS,bool ISCUMMULATIVE> struct IntegralHistogram{
             }
         }
     }
+    BINT* const __getHistogramAt__(int x,int y){
+        x=x*(x>0);
+        if(x>=width){x=width-1;}
+        y=y*(y>0);
+        if(y>=height){y=height-1;}
+
+        //x=x*(x>0)+(width-(x+1))*(x>width);
+        //y=y*(y>=0)+(height-(y+1))*(y>=height);
+        //std::cerr<<"y="<<y<<" x="<<x<<"\n";
+        return &(__data__[x*NBBINS+y*binLinestride]);
+    }
+    
     struct Iterator{
         IntegralHistogram<BINT,NBBINS,ISCUMMULATIVE> *const integralHistogram;
         const int width;

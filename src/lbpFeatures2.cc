@@ -73,16 +73,17 @@ bilde::Buffer<bilde::t_uint8> getSubImage(bilde::Buffer<bilde::t_uint8> img,std:
         t*=img.height;b*=img.height;
         r--;b--;
     }
+
     if(bilde::util::Args().verboseLevel>5){
         std::cerr<<"Extracting patch at ["<<l<<","<<t<<","<<b<<","<<r<<"]\n";
     }
-    if(l<0 || l>=r ||r>=img.width|| t<0 || t>=b || b>=img.height ){
+    if(l<0 || l>=r ||r > img.width|| t<0 || t>=b || b > img.height ){
         if(bilde::util::Args().verboseLevel>3){
             std::cerr<<"Ignoring patch at ["<<l<<","<<t<<","<<b<<","<<r<<"]\n";
         }
         return bilde::Buffer<bilde::t_uint8>(1,1);
     }
-    return bilde::Buffer<bilde::t_uint8>(img,l,t,r,b);
+    return bilde::Buffer<bilde::t_uint8>(img, l, t, r, b);
 
 }
 
@@ -164,9 +165,15 @@ int main(int argc,char**argv){
                         cv::namedWindow("LbpImage"+std::to_string(*radIter),1);
                         cv::imshow("LbpImage"+std::to_string(*radIter),outImg);
                     }
-                    bilde::Buffer<bilde::t_uint8> choppedImg=bilde::Buffer<bilde::t_uint8>(outImg,*radIter,*radIter,outImg.cols -*radIter-1,outImg.rows-*radIter-1);
+                    bilde::Buffer<bilde::t_uint8> choppedImg=bilde::Buffer<bilde::t_uint8>(outImg,*radIter,*radIter,outImg.cols - (*radIter + 1),outImg.rows-(*radIter + 1));
+                    if (bilde::util::Args().verboseLevel>6){
+                        std::cerr<<"Chopped: radius = "<<*radIter<<", x = "<<choppedImg.width<<". y = "<<choppedImg.height<<"\n";
+                    }
                     for(int k =0;k < windowList.size();k++){
                         bilde::Buffer<bilde::t_uint8> imageRegion=getSubImage(choppedImg,windowList[k]);
+                        if(bilde::util::Args().verboseLevel>6){
+                            std::cerr<<"Extracted: window = "<<windowList[k]<<", x = "<<imageRegion.width<<". y = "<<imageRegion.height<<"\n";
+                        }
                         if(imageRegion.width>1){
                             if(bilde::util::Args().verboseLevel>6){
                                 std::cerr<<"imageRegion >1, adding\n";

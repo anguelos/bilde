@@ -297,6 +297,7 @@ template<typename T, int SZ> struct StaticVector {
 		for (int k = 1; k < SZ; k++) {
 			stream << "," << vec[k];
 		}
+		return stream;
 	}
 	friend std::istream& operator>>(std::istream& stream,
 			const StaticVector<T, SZ>& vec) {
@@ -307,6 +308,8 @@ template<typename T, int SZ> struct StaticVector {
 		}
 		if (c != ',') {
 			throw "std::istream& operator>>(std::ostream& stream, const StaticVector<T,SZ>& vec) expected comma";
+		}else{
+			return stream;
 		}
 	}
 	template<int OSZ> friend StaticVector<T,OSZ+SZ> concat(const StaticVector<T,OSZ>& v1,const StaticVector<T,SZ>& v2) {

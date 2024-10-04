@@ -2,6 +2,8 @@
 #include <vector>
 #include <map>
 
+#include "config.hpp"
+
 #include "wrapping_api.hpp"
 
 #include "util/argv.hpp" //we want verbose everywhere
@@ -20,10 +22,9 @@
 #include "containers/cvmat_container.hpp"
 #endif
 //#include "containers/boost_numpy_container.hpp"
-#ifdef PYBIND11_INCLUDED
+#ifdef PYBIND11_NAMESPACE_BEGIN  //  TODO(anguelos) find amore apropriate define
 #include "containers/nppybind11_container.hpp"
 #endif
-#include "containers/nppybind11_container.hpp"
 
 //#include "io/libpng.hpp"
 //#include "io/libtiff.hpp"

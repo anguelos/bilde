@@ -474,7 +474,7 @@ template <typename LBPTYPE=t_uint8> struct LbpIterator{
             this->threshold=calculateOtsuThreshold(h);
             if(bilde::util::Args().verboseLevel>9){
                 std::cerr<<"DeltaHistograms:["<<h[0];
-                for (int k=1;k<h.size();k++)std::cerr<<","<<h[k];
+                for (size_t k=1;k<h.size();k++)std::cerr<<","<<h[k];
                 std::cerr<<"]\nOtsu threshold="<<this->threshold<<"\n";
             }
         }
@@ -506,27 +506,18 @@ template <typename LBPTYPE=t_uint8> struct LbpIterator{
         }        
     }
 
-    LbpIterator(Buffer<t_uint8> i,int n,double r,std::string samplingStr,std::string cmpStr,std::string thresholdStr):img(i),
-        nbSamples(n),radius(r),
-        xFrom(std::ceil(r)),xTo(i.width-(1+std::ceil(r))),
-        yFrom(std::ceil(r)),yTo(i.height-(1+std::ceil(r))),
-        phase(0){
-            this->sampling=samplingStr;
-            this->cmp=cmpStr;
-            if(thresholdStr=="otsu"){
-                this->threshold=-1;                
-            }else{
-                this->threshold=std::stoi(thresholdStr);
-            }
-            //std::cerr<<"DEBUG:\n\tnbsamples : "<<n<<"\n\trarius : "<<r<<"\n\tsampling : "<<samplingStr<<"\n\tcmp : "<<cmpStr<<"\n\threshold : "<<thresholdStr<<"\n\n";
-//            int h1[]={0,0,0,0};
-//            for(int y=0;y<img.height;y++){
-//                t_uint8 *row=img.getRow(y);
-//                for(int x =0 ;x<img.width;x++){
-//                    h1[row[x]/64]++;
-//                }
-//            }
-//            std::cout<<"DEBUG:\n\tnbsamples : "<<n<<"\n\trarius : "<<r<<"\n\tsampling : "<<samplingStr<<"\n\tcmp : "<<cmpStr<<"\n\threshold : "<<thresholdStr<<"\n\tinput hist : {"<<h1[0]<<","<<h1[1]<<","<<h1[2]<<","<<h1[3]<<"}\n\n";
+    LbpIterator(Buffer<t_uint8> i,int n,double r,std::string samplingStr,std::string cmpStr,std::string thresholdStr):
+            img(i),nbSamples(n),radius(r),phase(0),
+            xFrom(std::ceil(r)),xTo(i.width-(1+std::ceil(r))),
+            yFrom(std::ceil(r)),yTo(i.height-(1+std::ceil(r)))
+            {
+        this->sampling=samplingStr;
+        this->cmp=cmpStr;
+        if(thresholdStr=="otsu"){
+            this->threshold=-1;                
+        }else{
+            this->threshold=std::stoi(thresholdStr);
+        }
     }
 
     void applyLBPTransform(Buffer<LBPTYPE> out){
@@ -733,7 +724,7 @@ struct DictionaryCompressor{
     bool rotationInvariance;
     bool uniformity;
     int nbSamples;
-    int hSize;
+    t_sz hSize;
     int compressedSize;
     std::vector<int> finalMap;
 
@@ -765,7 +756,7 @@ struct DictionaryCompressor{
         rotationInvariance=ri;
         uniformity=u;
         nbSamples=ns;
-        hSize=1<<ns;
+        hSize= t_sz(1<<ns);
 
         std::vector<int> riMap(hSize,-1);
         std::vector<int> uMap;
@@ -773,37 +764,37 @@ struct DictionaryCompressor{
             uMap=createUniformMap(nbSamples);
             if(rotationInvariance){
                 riMap=createRotationInvariantMap(nbSamples);
-                for(int k=0;k<hSize;k++){
+                for(t_sz k=0;k<hSize;k++){
                     finalMap[k]=uMap[riMap[k]];
                 }
             }else{
-                for(int k=0;k<hSize;k++){
+                for(t_sz k=0;k<hSize;k++){
                     finalMap[k]=uMap[k];
                 }
             }
         }else{
             if(rotationInvariance){
                 riMap=createRotationInvariantMap(nbSamples);
-                for(int k=0;k<hSize;k++){
+                for(t_sz k=0;k<hSize;k++){
                     finalMap[k]=riMap[k];
                 }
             }else{
-                for(int k=0;k<hSize;k++){
+                for(t_sz k=0;k<hSize;k++){
                     finalMap[k]=k;
                 }
             }
         }
         std::vector<int> compressorMap(hSize+1,0);
         compressedSize=0;
-        for(int k=0;k<finalMap.size();k++){
-            if(finalMap[k]==k){
+        for(t_sz k=0;k<finalMap.size();k++){
+            if(finalMap[k]==int(k)){
                 compressorMap[k]=compressedSize;
                 compressedSize++;
             }else{
                 finalMap[k]=-1;
             }
         }
-        for(int k=0;k<hSize;k++){
+        for(t_sz k=0;k<hSize;k++){
             finalMap[k]=compressorMap[finalMap[k]];
         }
     }
@@ -812,7 +803,7 @@ struct DictionaryCompressor{
             return histogram;
         }
         std::vector<int> res(compressedSize,0);
-        for(int k=0;k<hSize;k++){
+        for(t_sz k=0;k<hSize;k++){
             res[finalMap[k]]+=histogram[k];
         }
         return res;
@@ -822,7 +813,7 @@ struct DictionaryCompressor{
             return featureNames;
         }
         std::vector<std::string> res(compressedSize,"...");
-        for(int k=0;k<hSize;k++){
+        for(t_sz k=0;k<hSize;k++){
             //res[this->finalMap[featureNames[k]]]=featureNames[k];
         }
         return res;
