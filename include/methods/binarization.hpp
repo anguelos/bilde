@@ -1,9 +1,11 @@
 #ifndef LOF_BINARIZATION_HPP
 #define LOF_BINARIZATION_HPP
 #include "bilde.hpp"
+
 namespace bilde{
 namespace methods{
 namespace binarization{
+
 
 inline Buffer<t_uint8> getOtsuBinarization(Buffer<t_uint8> in) {
     Buffer<t_uint8> res(in.width, in.height);

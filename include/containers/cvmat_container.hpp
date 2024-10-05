@@ -8,8 +8,11 @@
 #ifndef CVMAT_CONTAINER_HPP_
 #define CVMAT_CONTAINER_HPP_
 
+#include "wrapping_api.hpp"
+#include <opencv2/core/core.hpp>
+
 #define __OPENCV_CORE_HPP__
-//#include <opencv/cv.h>
+
 
 #ifdef  __OPENCV_CORE_HPP__
 

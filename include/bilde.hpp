@@ -18,10 +18,13 @@
 
 //#include "containers/buffer_container.hpp"
 //#include "containers/octave_container.hpp"
+
 #ifdef CV_VERSION
 #include "containers/cvmat_container.hpp"
 #endif
+
 //#include "containers/boost_numpy_container.hpp"
+
 #ifdef PYBIND11_NAMESPACE_BEGIN  //  TODO(anguelos) find amore apropriate define
 #include "containers/nppybind11_container.hpp"
 #endif

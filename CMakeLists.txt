@@ -4,11 +4,13 @@ project (Bilde)
 set (Tutorial_VERSION_MAJOR 0)
 set (Tutorial_VERSION_MINOR 1)
 
+option(ENABLE_CVMAT "Opencv>=2 containers, required for bilde programs" ON)
+option(ENABLE_PYBIND11 "Python bindings to bilde" ON)
+option(ENABLE_TIFFIO "Enable feature X in the project" OFF)
 
-set (ENABLE_PYTHON)
 
 #set (OPENCV_MAJOR "3")
-set (OPENCV_MAJOR "4")
+#set (OPENCV_MAJOR "4")
 
 
 
@@ -46,11 +48,11 @@ endif()
 #******************MACPORTS COMPATIBILITY*****************
 
 include_directories ("${PROJECT_SOURCE_DIR}/include")
-include_directories ("${PROJECT_SOURCE_DIR}/include/containers")
-include_directories ("${PROJECT_SOURCE_DIR}/include/io")
-include_directories ("${PROJECT_SOURCE_DIR}/include/operations")
-include_directories ("${PROJECT_SOURCE_DIR}/include/util")
-include_directories ("${PROJECT_SOURCE_DIR}/include")
+#include_directories ("${PROJECT_SOURCE_DIR}/include/containers")
+#include_directories ("${PROJECT_SOURCE_DIR}/include/io")
+#include_directories ("${PROJECT_SOURCE_DIR}/include/operations")
+#include_directories ("${PROJECT_SOURCE_DIR}/include/util")
+#include_directories ("${PROJECT_SOURCE_DIR}/include")
 include_directories ("${CMAKE_INCLUDE_PATH}")
 
 # configure a header file to pass some of the CMake settings
@@ -63,10 +65,10 @@ add_library( libtiff SHARED IMPORTED )
 add_library( libopencv_highgui SHARED IMPORTED )
 add_library( libopencv_core SHARED IMPORTED )
 
-
-#*******************LIBRARIES******************************
-#opopencv2_core
-if(${OPENCV_MAJOR} STREQUAL "3" OR ${OPENCV_MAJOR} STREQUAL "2")
+if(ENABLE_CVMAT)
+find_package(OpenCV REQUIRED)
+include_directories( ${OpenCV_INCLUDE_DIRS} )
+if(OpenCV_VERSION_MAJOR GREATER 2)
     find_library(
         OPENCV2_CORE_LIB opencv_core
         #"$PATHS" "${}"
@@ -77,17 +79,15 @@ if(${OPENCV_MAJOR} STREQUAL "3" OR ${OPENCV_MAJOR} STREQUAL "2")
     endif()
     message(STATUS "Found 'OPENCV2 CORE' at: ${OPENCV2_CORE_LIB}")
 
-    if(${OPENCV_MAJOR} STREQUAL "3")
-        find_library(
-            OPENCV3_IMGCODECS_LIB opencv_imgcodecs
-            HINTS "/usr/local/lib"  "/opt/local/lib" "/usr/lib" "/usr/lib/x86_64-linux-gnu"
-        )
+    find_library(
+        OPENCV3_IMGCODECS_LIB opencv_imgcodecs
+        HINTS "/usr/local/lib"  "/opt/local/lib" "/usr/lib" "/usr/lib/x86_64-linux-gnu"
+    )
 
-        if(${OPENCV3_IMGCODECS_LIB} STREQUAL "OPENCV3_IMGCODECS_LIB-NOTFOUND")
-            message(FATAL_ERROR "Couldn't find the 'OPENCV3_IMGCODECS_LIB' library")
-        endif()
-        message(STATUS "Found 'OPENCV3 IMGCODECS' at: ${OPENCV3_IMGCODECS_LIB}")
+    if(${OPENCV3_IMGCODECS_LIB} STREQUAL "OPENCV3_IMGCODECS_LIB-NOTFOUND")
+        message(FATAL_ERROR "Couldn't find the 'OPENCV3_IMGCODECS_LIB' library")
     endif()
+    message(STATUS "Found 'OPENCV3 IMGCODECS' at: ${OPENCV3_IMGCODECS_LIB}")
 
     find_library(
         OPENCV2_HIGHGUI_LIB opencv_highgui
@@ -100,74 +100,36 @@ if(${OPENCV_MAJOR} STREQUAL "3" OR ${OPENCV_MAJOR} STREQUAL "2")
     message(STATUS "Found 'OPENCV2 HIGHGUI' at: ${OPENCV2_HIGHGUI_LIB}")
 endif()
 
-
-if(${OPENCV_MAJOR} STREQUAL "4")
-    find_package(OpenCV REQUIRED )
-    include_directories( ${OpenCV_INCLUDE_DIRS} )
-
-    if(${OPENCV2_CORE_LIB} STREQUAL "OPENCV2_CORE_LIB-NOTFOUND")
-        message(FATAL_ERROR "Couldn't find the 'OPENCV2 CORE' library")
-    endif()    
-    message(STATUS "Found 'OPENCV2 CORE' at: ${OPENCV2_CORE_LIB}")
-    find_library(
-        OPENCV2_HIGHGUI_LIB opencv_highgui
-        HINTS "/usr/local/lib"  "/opt/local/lib" "/usr/lib" "/usr/lib/x86_64-linux-gnu"
-    )
-    #opencv2_highgui
-    if(${OPENCV2_HIGHGUI_LIB} STREQUAL "OPENCV2_HIGHGUI_LIB-NOTFOUND")
-        message(FATAL_ERROR "Couldn't find the 'OPENCV2 HIGHGUI' library")
-    endif()
-    message(STATUS "Found 'OPENCV2 HIGHGUI' at: ${OPENCV2_HIGHGUI_LIB}")
-
-endif()
-
-
-configure_file (  "${PROJECT_SOURCE_DIR}/include/config.hpp.in"  "${PROJECT_BINARY_DIR}/include/config.hpp" )
+configure_file ("${PROJECT_SOURCE_DIR}/include/config.hpp.in"  "${PROJECT_BINARY_DIR}/include/config.hpp")
 include_directories("${PROJECT_BINARY_DIR}")
 
 file(GLOB_RECURSE HEADERS *.hpp)
 
 
 #*********************EXECUTABLES******************************
-#enhace_grayscale
+add_executable(bilde_binarize src/binarize.cc ${HEADERS})
+target_link_libraries (bilde_binarize PRIVATE ${OpenCV_LIBS})
 
-#add_executable(enhace_grayscale src/enhace_grayscale.cc)
-#target_link_libraries (enhace_grayscale ${OPENCV2_CORE_LIB} ${OPENCV2_HIGHGUI_LIB})
+add_executable(bilde_lbpFeatures2 src/lbpFeatures2.cc ${HEADERS})
+target_link_libraries (bilde_lbpFeatures2 PRIVATE ${OpenCV_LIBS})
 
-#add_executable(textline_segment src/textline_segment.cc)
-#target_link_libraries (textline_segment ${OPENCV2_CORE_LIB} ${OPENCV2_HIGHGUI_LIB})
+add_executable(bilde_enhace_grayscale src/enhace_grayscale.cc ${HEADERS})
+target_link_libraries (bilde_enhace_grayscale PRIVATE ${OpenCV_LIBS})
 
-if(${OPENCV_MAJOR} STREQUAL "3")#this is ugly
-    add_executable(binarize src/binarize.cc ${HEADERS})
-    target_link_libraries (binarize ${OPENCV2_CORE_LIB} ${OPENCV3_IMGCODECS_LIB} ${OPENCV2_HIGHGUI_LIB})
+add_executable(bilde_textline_segment src/textline_segment.cc ${HEADERS})
+target_link_libraries (bilde_textline_segment PRIVATE ${OpenCV_LIBS})
 
-    add_executable(lbpFeatures src/lbpFeatures.cc ${HEADERS})
-    target_link_libraries (lbpFeatures  ${OPENCV2_CORE_LIB} ${OPENCV3_IMGCODECS_LIB} ${OPENCV2_HIGHGUI_LIB})
+# Needs debugging, doesn't compile for now
+#add_executable(bilde_wi_retrieve src/wi_retrieve.cc ${HEADERS})
+#target_link_libraries (bilde_wi_retrieve PRIVATE ${OpenCV_LIBS})
 
-    add_executable(lbpTransform src/lbpTransform.cc ${HEADERS})
-    target_link_libraries (lbpTransform ${OPENCV2_CORE_LIB} ${OPENCV3_IMGCODECS_LIB} ${OPENCV2_HIGHGUI_LIB})
+endif()  # ENABLE_CVMAT
 
-
-    add_executable(lbpFeatures2 ./src/lbpFeatures2.cc ${HEADERS})
-    target_link_libraries (lbpFeatures2 ${OPENCV2_CORE_LIB} ${OPENCV3_IMGCODECS_LIB} ${OPENCV2_HIGHGUI_LIB})
-
-
-    if(${ENABLE_PYTHON})
-        add_library(npbilde SHARED src/npbilde.cc ${HEADERS})
-        target_link_libraries (npbilde ${OPENCV2_CORE_LIB} ${OPENCV2_HIGHGUI_LIB} ${BOOST_PYTHON_LIB} ${BOOST_NUMPY_LIB} ${PYTHON_LIB})
-    endif()
-else()
-    add_executable(binarize src/binarize.cc ${HEADERS})
-    target_link_libraries (binarize ${OPENCV2_CORE_LIB} ${OPENCV2_HIGHGUI_LIB})
-
-    add_executable(lbpFeatures src/lbpFeatures.cc ${HEADERS})
-    target_link_libraries (lbpFeatures  ${OPENCV2_CORE_LIB} ${OPENCV2_HIGHGUI_LIB})
-
-    add_executable(lbpTransform src/lbpTransform.cc ${HEADERS})
-    target_link_libraries (lbpTransform ${OPENCV2_CORE_LIB} ${OPENCV2_HIGHGUI_LIB})
-
-    add_executable(lbpFeatures2 ./src/lbpFeatures2.cc ${HEADERS})
-    target_link_libraries (lbpFeatures2 ${OPENCV2_CORE_LIB} ${OPENCV2_HIGHGUI_LIB})
-
-
+if(ENABLE_PYBIND11)
+    file(GLOB PYTHON_INCLUDE_DIR "${PYTHON_VENV_PATH}/include/python3.*")
+    find_package(pybind11 REQUIRED
+    HINTS "/usr/local/lib" "/opt/local/lib" "/usr/lib" "/usr/lib/x86_64-linux-gnu" "${VIRTUAL_ENVz}"
+    )
+    pybind11_add_module(bilde src/bildepybind.cc ${HEADERS})
+    target_link_libraries (bilde PRIVATE ${OpenCV_LIBS})
 endif()

@@ -98,7 +98,7 @@ template <typename CONTAINER,typename PIXELT> struct ContainerWrapper{
 };
 
 
-}
+} // leaving namespace container
 
 template <typename A,typename B> struct __type_comparisson__{
 	static bool sameTypes(){
@@ -160,6 +160,10 @@ template<typename T> struct Buffer {
 	Buffer(void* d, t_sz w, t_sz h, t_sz ls) :
             __data__((t_uint8*)d), width(w), height(h), __linestride__(ls) {
 	}
+	Buffer(const void* d, t_sz w, t_sz h, t_sz ls) :  // const version of the above constructor todo(angelos) try make only work with const buffers
+            __data__((t_uint8*)d), width(w), height(h), __linestride__(ls) {
+	}
+
     Buffer(Buffer<T> img,int leftMost,int topMost,int rightMost,int bottomMost):__ownedStorage__(img.__ownedStorage__),
         __data__(img.__data__+sizeof(T)*(leftMost+topMost*img.getPixelLinestride())),
         width(1+rightMost-leftMost),height(1+bottomMost-topMost),__linestride__(img.__linestride__){}
@@ -181,27 +185,33 @@ template<typename T> struct Buffer {
 		return res;
 	}
 
-	bool ownsMemory() {
+	bool ownsMemory() const {
 		return bool(__ownedStorage__.get());
 	}
 	T* getRow(t_sz row) {
 		return (T*) (this->__data__ + __linestride__ * row);
 	}
+	const T* getConstRow(t_sz row) const {
+		return (T*) (__data__ + __linestride__ * row);
+	}
 	T* operator[](t_sz rowNum) {
 		return (T*) (__data__ + __linestride__ * rowNum);
 	}
-	std::string getDescription(){
+	T operator()(t_sz x, t_sz y) const {
+		return *(getRow(y) + x);
+	}
+	std::string getDescription() const {
 		std::stringstream tmp;
 		tmp<<"width : "<<width<<"\nheight : "<<height<<"\nlinestride : "<<__linestride__<<"\n__data__ : "<<((void*)(__data__))<<"\n__ownedStorage__ : "<<((void*)(__ownedStorage__.get()))<<"\n";
 		return tmp.str();
 	}
-	bool isMemContinious(){
+	bool isMemContinious() const {
 		return __linestride__==sizeof(T)*width;
 	}
-	t_uint32 getByteLinestride(){
+	t_uint32 getByteLinestride() const {
 		return __linestride__;
 	}
-	t_uint32 getPixelLinestride(){
+	t_uint32 getPixelLinestride() const {
 		return __linestride__/sizeof(T);
 	}
 	~Buffer() {
