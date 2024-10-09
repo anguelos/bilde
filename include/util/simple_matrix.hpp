@@ -13,15 +13,15 @@ namespace util {
 namespace matrix {
 
 struct Matrix {
-	const int width;
-	const int height;
+	const t_sz width;
+	const t_sz height;
 	std::vector<double> data;
 	Matrix(int w, int h) :
 			width(w), height(h), data(w * h) {
 	}
 	Matrix(const std::vector<std::vector<double> >&in) :
 			width(in[0].size()), height(in.size()), data(width * height) {
-		for (int y = 0; y < height; y++) {
+		for (t_sz y = 0; y < height; y++) {
 			if (in[y].size() != width) {
 				std::cerr
 						<< "Matrix(const std::vector<std::vector<double> >&in)\nin["
@@ -29,25 +29,25 @@ struct Matrix {
 						<< width << "\nheight=" << height << "\n";
 				throw "Matrix(const std::vector<std::vector<double> >&in)";
 			}
-			for (int x = 0; x < width; x++) {
+			for (t_sz x = 0; x < width; x++) {
 				data[x + y * width] = in[y][x];
 			}
 		}
 	}
 	std::vector<std::vector<std::string> > getAsVector() {
 		std::vector<std::vector<std::string> > res;
-		for (int y = 0; y < height; y++) {
+		for (t_sz y = 0; y < height; y++) {
 			std::vector<std::string> tmp(width);
-			for (int x = 0; x < width; x++) {
+			for (t_sz x = 0; x < width; x++) {
 				tmp[x] = data[y * width + x];
 			}
 			res.push_back(tmp);
 		}
 		return res;
 	}
-	Matrix hslice(int from, int to) {
+	Matrix hslice(t_sz from, t_sz to) {
 		Matrix res(1 + to - from, height);
-		int x, y;
+		t_sz x, y;
 		for (y = 0; y < height; y++) {
 			for (x = from; x <= to; x++) {
 				res.data[y * res.width + x - from] = data[y * res.width + x];
@@ -55,9 +55,9 @@ struct Matrix {
 		}
 		return res;
 	}
-	Matrix vslice(int from, int to) {
+	Matrix vslice(t_sz from, t_sz to) {
 		Matrix res(width, 1 + to - from);
-		int x, y;
+		t_sz x, y;
 		for (y = from; y <= to; y++) {
 			for (x = 0; x < width; x++) {
 				res.data[(y - from) * res.width + x] = data[y * res.width + x];
@@ -66,7 +66,7 @@ struct Matrix {
 		return res;
 	}
 	void scaleRowsByVector(const std::vector<double>& sc) {
-		int x, y;
+		t_sz x, y;
 		if (sc.size() != width) {
 			std::cerr
 					<< "void scaleRowsByVector(const std::vector<double>& sc)\nsc.size = "
@@ -80,7 +80,7 @@ struct Matrix {
 		}
 	}
 	void scaleColsByVector(const std::vector<double>& sc) {
-		int x, y;
+		t_sz x, y;
 		if (sc.size() != height) {
 			std::cerr
 					<< "void scaleColsByVector(const std::vector<double>& sc)\nsc.size = "
@@ -100,7 +100,7 @@ struct Matrix {
 			throw "Matrix operator*(const Matrix& m1,const Matrix&m2)";
 		}
 		Matrix res(m1.height, m2.width);
-		int x, y, k;
+		t_sz x, y, k;
 		double s;
 		for (y = 0; y < res.height; y++) {
 			for (x = 0; x < res.width; x++) {
@@ -116,7 +116,7 @@ struct Matrix {
 		return res;
 	}
 	friend std::ostream& operator<<(std::ostream & out, const Matrix& m) {
-		int x, y;
+		t_sz x, y;
 		out << "[ " << m.width << " x " << m.height;
 		for (y = 0; y < m.height; y++) {
 			out << "\n\t[" << m.data[y * m.width];
@@ -130,14 +130,14 @@ struct Matrix {
 	}
 };
 
-inline int __geMartixWidthValidate__(
+inline t_sz __geMartixWidthValidate__(
 		const std::vector<std::vector<double> >& v) {
-	int r = 0;
+	t_sz r = 0;
 	if (v.size() == 0) {
 		return 0;
 	} else {
 		r = v[0].size();
-		for(int k=1;k<v.size();k++){
+		for(t_sz k=1;k<v.size();k++){
 			if(v[k].size()!=r){
 				std::cerr << "__geMartixWidthValidate__ wrong row size\n" << k
 						<< "th row has a length of " << v[k].size()
@@ -151,21 +151,21 @@ inline int __geMartixWidthValidate__(
 inline std::vector<std::vector<double> > multiply(
 	const std::vector<std::vector<double> >&m1,
 	const std::vector<std::vector<double> >& m2) {
-	int m1height=m1.size();
-	int m1width=__geMartixWidthValidate__(m1);
-	int m2height=m2.size();
-	int m2width=__geMartixWidthValidate__(m2);
+	t_sz m1height=m1.size();
+	t_sz m1width=__geMartixWidthValidate__(m1);
+	t_sz m2height=m2.size();
+	t_sz m2width=__geMartixWidthValidate__(m2);
 	if(m1width!=m2height){
 		std::cerr<<"multiplication of ["<<m1width<<"x"<<m1height<<"] with ["<<m2width<<"x"<<m2height<<"] is imposible";
 	}
 	std::vector<std::vector<double> > res;
-	int x,y,k;
+	t_sz x,y,k;
 	double s;
 	for(y=0;y<m1height;y++){
 		res.push_back(std::vector<double>(m2width));
 	}
 	for(y=0;y<m1height;y++){
-		for(int x=0;x<m2width;x++){
+		for(x=0;x<m2width;x++){
 			s=0;
 			for(k=0;k<m1width;k++){
 				s+=((m1[y][k])*(m2[k][x]));
@@ -178,13 +178,13 @@ inline std::vector<std::vector<double> > multiply(
 
 inline std::vector<std::vector<double> > scaleRows(const std::vector<std::vector<double> >& m,std::vector<double> & v){
 	std::vector<std::vector<double> >res;
-	for(int y=0;y<m.size();y++){
+	for(t_sz y=0;y<m.size();y++){
 		if(v.size()!=m[y].size()){
 			std::cerr<<"row "<<y<<" of "<<m.size() <<" Size missmatch:  vector size= "<<v.size()<<"  row size= "<<m[y].size()<<"\n";
 			throw "inline std::vector<std::vector<double> > scaleRows(const std::vector<std::vector<double> >& m,std::vector<double> & v) scale vector missmatch";
 		}
 		res.push_back(std::vector<double>(m[y].size()));
-		for(int x=0;x<m[y].size();x++){
+		for(t_sz x=0;x<m[y].size();x++){
 			res[y][x]=m[y][x]*v[x];
 		}
 	}

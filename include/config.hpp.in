@@ -5,16 +5,22 @@
 #include <opencv/cv.h>
 #endif
 
-#ifdef WITH_CVMAT_CONTAINER
-#define OPENCV_MAJOR_VERSION  @OPENCV_MAJOR@
+#ifdef ENABLE_CVMAT
 
-#if OPENCV_MAJOR_VERSION==3
-#include <opencv2/imgcodecs.hpp>
-#endif
-
+#if OPENCV_MAJOR_VERSION==3 || OPENCV_MAJOR_VERSION==4
+#include <opencv2/core/core.hpp>
+#else
 #include <opencv2/opencv.hpp>
 #endif
 
-#ifdef WITH_TIFF_IO
+#endif //ENABLE_CVMAT
+
+
+#ifdef ENABLE_PYBIND11
+#include <pybind11/pybind11.h>
+#endif
+
+#ifdef ENABLE_TIFFIO
 #include <tiffio.h>
 #endif
+

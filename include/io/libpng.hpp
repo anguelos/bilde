@@ -8,7 +8,8 @@
 #ifndef LIBPNG_HPP_
 #define LIBPNG_HPP_
 
-#ifdef BILDE_ENABLE_LIBPNG
+
+#pragma message("Warning: LIBPNG BINDINGS NOT IMPLEMENTED")
 
 namespace bilde{
 namespace io{
@@ -18,6 +19,6 @@ namespace libpng{
 }
 }
 
-#endif /*BILDE_ENABLE_LIBPNG*/
+
 
 #endif /* LIBPNG_HPP_ */

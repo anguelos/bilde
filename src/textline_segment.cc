@@ -1,6 +1,10 @@
-#include "bilde.hpp"
-#include "config.hpp"
 #include <opencv2/opencv.hpp>
+#include <opencv2/highgui/highgui.hpp>
+
+
+#include "bilde.hpp"
+
+static const int BOX_FILTER_PAD=100;
 
 std::vector<std::string> inFnames;
 std::vector<std::string> outFnames;
@@ -34,9 +38,14 @@ void declareVariables(int argc,char** argv){
 
 
 cv::Mat boxFilter(cv::Mat inImg,int width,int height){
-    cv::Mat tmpImg(inImg.rows+1,inImg.cols+1,CV_32SC1);
+    if(inImg.type()!=CV_8UC1){
+        std::cerr<<"error : boxFilter only works with 8bit single channel images.\n";
+        exit(1);
+    }
     cv::Mat outImg(inImg.rows,inImg.cols,CV_8UC1);
-    bilde::operations::integral_images::__getBoxFilter__<bilde::t_uint8,bilde::t_sint32>(outImg,inImg,width,height,tmpImg);
+    bilde::Buffer<bilde::t_uint8> inBuf(inImg);
+    bilde::Buffer<bilde::t_uint8> outBuf(outImg);
+    bilde::operations::integral_images::getBoxFilter<bilde::t_uint8,BOX_FILTER_PAD>(inBuf,outBuf,width,height);
     return outImg;
 }
 
@@ -196,9 +205,11 @@ int main(int argc,char** argv){
         }
 
         cv::Mat CC(inImg.rows,inImg.cols,CV_32SC1);
+        bilde::Buffer<bilde::t_sint32> ccBuf(CC);
         cv::Mat LLA(inImg.rows,inImg.cols,CV_32SC1);
         cv::Mat LLC(inImg.rows,inImg.cols,CV_32SC1);
-        int nbComponents=bilde::operations::components::__labelConnectedComponents__<bilde::t_uint8>(CC,inImg,8);
+        //int nbComponents=bilde::operations::components::__labelConnectedComponents__<bilde::t_uint8>(CC,inImg,8);
+        int nbComponents=bilde::operations::components::__labelConnectedComponents__<bilde::t_uint8>(ccBuf,inImg,8);
         int letterHeight=getLetterHeight(CC,nbComponents,minimumLetterHeight,maximumLetterHeight);
         cv::Mat LA(inImg.rows,inImg.cols,inImg.type());
         cv::Mat LC(inImg.rows,inImg.cols,inImg.type());

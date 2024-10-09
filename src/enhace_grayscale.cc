@@ -32,7 +32,6 @@ BINT globalCummulativeHistogram[MAX_HISTOGRAM_SIZE];
 template <typename BINT,int NBBINS> int enhaceGrayLinear(int val,const BINT* histogram){
     typedef typename bilde::operations::integral_histograms::IntegralHistogram<BINT,NBBINS,true>::HistogramOperations operations;
     int sum=histogram[NBBINS-1];
-    //int top=operations::__getCentilePos__(.01*topCentile,histogram);
     int top=operations::__getCentilePos__(.01*topCentile,histogram);
     int bottom=operations::__getCentilePos__(.01*bottomCentile,histogram);
     if(VERBOSE>5){

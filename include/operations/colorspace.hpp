@@ -273,7 +273,7 @@ inline void __sint32ToRGBA__(std::vector<Buffer<t_uint8> >out,Buffer<t_sint32> i
 	Buffer<t_uint8> G(out[1]);
 	Buffer<t_uint8> B(out[2]);
 	Buffer<t_uint8> A(out[3]);
-	int x,y;
+	t_sz x,y;
 	t_sint32* inRow;
 	t_uint8* rRow;
 	t_uint8* gRow;

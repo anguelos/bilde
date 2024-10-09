@@ -57,7 +57,8 @@ struct __BufferDebugger__{
     bool dumpShowFrames;
     std::ostream& out;
     std::stringstream null;
-    __BufferDebugger__():out(std::cerr),dumpCounter(0),dumpPrefix("__DBG_"),dumpShowFrames(false){
+    __BufferDebugger__():
+            dumpCounter(0),dumpPrefix("__DBG_"),dumpShowFrames(false),out(std::cerr){
         null.setstate(std::ios_base::badbit);
     }
     std::ostream& operator()(int vl){

@@ -7,6 +7,9 @@
 
 #ifndef COPY_CONSTRUCTOR_HPP_
 #define COPY_CONSTRUCTOR_HPP_
+
+#include "wrapping_api.hpp"
+
 namespace bilde{
 namespace container{
 

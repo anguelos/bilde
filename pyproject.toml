@@ -1,0 +1,7 @@
+[build-system]
+requires = ["setuptools", "wheel", "cibuildwheel", "pybind11", "numpy"]
+build-backend = "setuptools.build_meta"
+
+[tool.cibuildwheel]
+# Output directory where the wheels will be stored
+#output-dir = "wheelhouse"

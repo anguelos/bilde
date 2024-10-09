@@ -52,19 +52,14 @@ cd src
 make lbpFeatures2
 ```
 
-Running Feature extraction for the SRS-LBP pipeline:
+## Python extention (pybilde)
+* Install build dependencies
 ```bash
-./src/lbpFeatures2 -r 1 2 3 4 5 6 7 8 9 10 11 12 -i ./sample_data/bw_text.tiff >> /tmp/features.csv
+pip install cibuildwheel
 ```
 
-Citation:
-```python
-@inproceedings{nicolaou2015sparse,
-  title={Sparse radial sampling LBP for writer identification},
-  author={Nicolaou, Anguelos and Bagdanov, Andrew D and Liwicki, Marcus and Karatzas, Dimosthenis},
-  booktitle={2015 13th International Conference on Document Analysis and Recognition (ICDAR)},
-  pages={716--720},
-  year={2015},
-  organization={IEEE}
-}
+Build bdist without a CI
+```bash
+CIBW_BUILD="cp313t-manylinux_x86_64 cp313t-manylinux_x86_64 cp312-manylinux_x86_64 cp311-manylinux_x86_64 cp310-manylinux_x86_64 cp39-manylinux_x86_64 cp38-manylinux_x86_64 cp37-manylinux_x86_64 cp36-manylinux_x86_64" CIBW_BEFORE_BUILD="yum install -y boost-devel" cibuildwheel --platform linux --output-dir wheelhouse
+CIBW_SKIP="pp310-manylinux_i686 pp39-manylinux_i686 pp38-manylinux_i686 pp37-manylinux_i686 pp36-manylinux_i686 pp310-manylinux_x86_64  pp39-manylinux_x86_64 pp38-manylinux_x86_64  pp37-manylinux_x86_64 pp36-manylinux_x86_64" CIBW_BEFORE_BUILD="yum install -y boost-devel" cibuildwheel --platform linux --output-dir wheelhouse
 ```

@@ -112,10 +112,10 @@ template<typename T> struct TypedArgument: public __BaseArgument__ {
 		static std::map<std::string,bool> res=__getBooleanMap__();
 		return res;
 	}
-	T storedData;
 	bool hasDefault;
 	bool valSet;
 	T* optionVal;
+	T storedData;
 	TypedArgument(const TypedArgument<T>& ta) :
 			__BaseArgument__(ta), hasDefault(ta.hasDefault), valSet(ta.valSet), optionVal(
 					ta.isInternalyStored() ? &storedData : ta.optionVal), storedData(
@@ -123,12 +123,11 @@ template<typename T> struct TypedArgument: public __BaseArgument__ {
 	}
 	TypedArgument(std::string sn, std::string ln, std::string h, T* val) :
 			__BaseArgument__(sn, ln, h, __getTypeDescription__<T>(), val), hasDefault(
-					false), optionVal(val), valSet(false) {
+					false), valSet(false), optionVal(val) {
 	}
 	TypedArgument(std::string sn, std::string ln, std::string h) :
-			__BaseArgument__(sn, ln, h, __getTypeDescription__<T>(),
-					&storedData), hasDefault(false), optionVal(&storedData), valSet(
-					false) {
+			__BaseArgument__(sn, ln, h, __getTypeDescription__<T>(), &storedData),
+			hasDefault(false), valSet(false), optionVal(&storedData) {
 	}
 	bool isInternalyStored() const {
 		return (optionVal) == &(storedData);
@@ -187,38 +186,32 @@ template<> struct TypedArgument<std::string> : public __BaseArgument__ {
 	bool valSet;
 	std::string* optionVal;
 	TypedArgument<std::string>(const TypedArgument<std::string>& ta) :
-			__BaseArgument__(ta), hasDefault(ta.hasDefault), valSet(ta.valSet), optionVal(
-					ta.isInternalyStored() ? &storedData : ta.optionVal), storedData(
-					ta.storedData) {
+			__BaseArgument__(ta), storedData(ta.storedData), hasDefault(ta.hasDefault), valSet(ta.valSet), optionVal(ta.isInternalyStored() ? &storedData : ta.optionVal) {
 	}
 
 	TypedArgument<std::string>(std::string sn, std::string ln, std::string h,
 			std::string* val, std::vector<std::string> allowedOptions) :
-			__BaseArgument__(sn, ln, h, __getTypeDescription__<std::string>(),
-					val), hasDefault(false), optionVal(val), valSet(false), allowed(
-					allowedOptions) {
+			__BaseArgument__(sn, ln, h, __getTypeDescription__<std::string>(),val), 
+			allowed(allowedOptions), hasDefault(false), valSet(false), optionVal(val) {
 	}
-	TypedArgument<std::string>(std::string sn, std::string ln, std::string h,
-			std::vector<std::string> allowedOptions) :
-			__BaseArgument__(sn, ln, h, __getTypeDescription__<std::string>(),
-					&storedData), hasDefault(false), optionVal(&storedData), valSet(
-					false), allowed(allowedOptions) {
+	TypedArgument<std::string>(std::string sn, std::string ln, std::string h, std::vector<std::string> allowedOptions) :
+			__BaseArgument__(sn, ln, h, __getTypeDescription__<std::string>(), &storedData), 
+			allowed(allowedOptions), hasDefault(false), valSet(false), optionVal(&storedData) {
 	}
 
-	TypedArgument<std::string>(std::string sn, std::string ln, std::string h,
-			std::string* val) :
-			__BaseArgument__(sn, ln, h, __getTypeDescription__<std::string>(),
-					val), hasDefault(false), optionVal(val), valSet(false) {
+	TypedArgument<std::string>(std::string sn, std::string ln, std::string h, std::string* val) :
+			__BaseArgument__(sn, ln, h, __getTypeDescription__<std::string>(),val),
+			hasDefault(false), valSet(false), optionVal(val) {
 	}
+
 	TypedArgument<std::string>(std::string sn, std::string ln, std::string h) :
-			__BaseArgument__(sn, ln, h, __getTypeDescription__<std::string>(),
-					&storedData), hasDefault(false), optionVal(&storedData), valSet(
-					false) {
+			__BaseArgument__(sn, ln, h, __getTypeDescription__<std::string>(),&storedData), 
+			hasDefault(false), valSet(false), optionVal(&storedData) {
 	}
 	bool __validate__() const {
 		bool res = hasDefault || valSet;
 		bool found = allowed.size() == 0;
-		for (int k = 0; k < allowed.size() ; k++) {
+		for (unsigned int k = 0; k < allowed.size() ; k++) {
 			found = found || (*optionVal == allowed[k]);
 		}
 		return res && found;
@@ -237,7 +230,7 @@ template<> struct TypedArgument<std::string> : public __BaseArgument__ {
 				//std::cerr<<"DEBUG __getValidationMsg__<std::string> long name: "<<longname<<" {"<<*optionVal<<"} alowed size "<<allowed.size()<<"\n";
 				tmp << "Option " << longname << " has value '" << *optionVal
 						<< "'. Allowed values are [ " << allowed[0];
-				for (int k = 1; k < allowed.size(); k++) {
+				for (unsigned int k = 1; k < allowed.size(); k++) {
 					tmp << " | " << allowed[1];
 				}
 				tmp << " ].";
@@ -265,7 +258,7 @@ template<> struct TypedArgument<std::string> : public __BaseArgument__ {
 		std::stringstream tmp;
 		if(allowed.size()>0){
 			tmp<<" values: ["<<allowed[0];
-			for(int k=1;k<allowed.size();k++){
+			for(unsigned int k=1;k<allowed.size();k++){
 				tmp<<"|"<<allowed[k];
 			}
 			tmp<<"]";
@@ -284,24 +277,20 @@ template<> struct TypedArgument<std::vector<std::string> > : public __BaseArgume
 	bool hasDefault;
 	bool valSet;
 	std::vector<std::string>* optionVal;
-	int maxAllowedOptions;
-	TypedArgument<std::vector<std::string> >(
-			const TypedArgument<std::vector<std::string> >& ta) :
-			__BaseArgument__(ta), hasDefault(ta.hasDefault), valSet(ta.valSet), optionVal(
-					ta.isInternalyStored() ? &storedData : ta.optionVal), storedData(
-					ta.storedData), maxAllowedOptions(ta.maxAllowedOptions) {
+	unsigned int maxAllowedOptions;
+	TypedArgument<std::vector<std::string> >(const TypedArgument<std::vector<std::string> >& ta) :
+			__BaseArgument__(ta), storedData(ta.storedData), 
+			hasDefault(ta.hasDefault), valSet(ta.valSet),
+			optionVal(ta.isInternalyStored() ? &storedData : ta.optionVal),maxAllowedOptions(ta.maxAllowedOptions) {
 	}
 	TypedArgument<std::vector<std::string> >(std::string sn, std::string ln,
-			std::string h, std::vector<std::string>* val, int maxAllowed) :
-			__BaseArgument__(sn, ln, h, __getTypeDescription__<std::vector<std::string> >(),
-					val), hasDefault(false), optionVal(val), valSet(false), maxAllowedOptions(
-					maxAllowed) {
+		std::string h, std::vector<std::string>* val, int maxAllowed) :
+			__BaseArgument__(sn, ln, h, __getTypeDescription__<std::vector<std::string> >(),val),
+			hasDefault(false), valSet(false), optionVal(val), maxAllowedOptions(maxAllowed) {
 	}
-	TypedArgument<std::vector<std::string> >(std::string sn, std::string ln,
-			std::string h, int maxAllowed) :
-			__BaseArgument__(sn, ln, h, __getTypeDescription__<std::vector<std::string> >(),
-					&storedData), hasDefault(false), optionVal(&storedData), valSet(
-					false), maxAllowedOptions(maxAllowed) {
+	TypedArgument<std::vector<std::string> >(std::string sn, std::string ln,std::string h, int maxAllowed) :
+			__BaseArgument__(sn, ln, h, __getTypeDescription__<std::vector<std::string> >(),&storedData), 
+			hasDefault(false), valSet(false), optionVal(&storedData), maxAllowedOptions(maxAllowed) {
 	}
 	bool __validate__() const {
 		return (maxAllowedOptions < 0 || maxAllowedOptions >= optionVal->size());
@@ -332,7 +321,7 @@ template<> struct TypedArgument<std::vector<std::string> > : public __BaseArgume
 				&& optionVal->size() > maxAllowedOptions + 1) {
 			throw("maxAllowedOptions Exceeded");
 		}
-		for (int j = 1; j < valVector.size(); j++) {
+		for (unsigned int j = 1; j < valVector.size(); j++) {
 			optionVal->push_back(valVector[j]);
 		}
 	}
@@ -343,7 +332,7 @@ template<> struct TypedArgument<std::vector<std::string> > : public __BaseArgume
 			std::stringstream tmp;
 			tmp << " Default value: [ "
 					<< ((optionVal->size() > 0) ? (*optionVal)[0] : "");
-			for (int k = 1; k < optionVal->size(); k++) {
+			for (unsigned int k = 1; k < optionVal->size(); k++) {
 				tmp << " , " << (*optionVal)[k];
 			}
 			tmp << " ] .";
@@ -354,9 +343,9 @@ template<> struct TypedArgument<std::vector<std::string> > : public __BaseArgume
 
 inline void  __printArgs__(std::vector<std::vector<std::string> >args,std::ostream & out=std::cerr){
 	out<<"Arguments:\n";
-	for(int k=0;k<args.size();k++){
+	for(unsigned int k=0;k<args.size();k++){
 		out<<"{ ";
-		for(int j=0;j<args[k].size();j++){
+		for(unsigned int j=0;j<args[k].size();j++){
 			out<<" ["<<args[k][j]<<" ] ";
 		}
 		out<<"}\n";
@@ -421,7 +410,7 @@ struct ArgumentParser {
 
 	static void __removeEqualities__(
 			std::vector<std::vector<std::string> >& args) {
-		for (int k = 0; k < args.size(); k++) {
+		for (unsigned int k = 0; k < args.size(); k++) {
 			if (args[k][0].find('=') != std::string::npos) {
 
 				int equalPos = args[k][0].find_first_of('=');
@@ -442,7 +431,7 @@ struct ArgumentParser {
 	static void __replaceLongNames__(
 			std::vector<std::vector<std::string> >& args,
 			std::map<std::string, std::string> allNames2ShortNames) {
-		for (int k = 0; k < args.size(); k++) {
+		for (unsigned int k = 0; k < args.size(); k++) {
 			if (args[k][0][0] == '-') {
 				try{
 					args[k][0] = allNames2ShortNames.at(args[k][0]);
@@ -458,9 +447,9 @@ struct ArgumentParser {
 			std::vector<std::vector<std::string> > args,
 			std::vector<std::string> positionals) {
 		std::vector<std::string> filteredPositionals;
-		for (int j = 0; j < positionals.size(); j++) {
+		for (unsigned int j = 0; j < positionals.size(); j++) {
 			bool found = false;
-			for (int k = 0; k < args.size() && !found; k++) {
+			for (unsigned int k = 0; k < args.size() && !found; k++) {
 				if (args[k][0] == positionals[j]) {
 					found = true;
 				}
@@ -474,8 +463,8 @@ struct ArgumentParser {
 
 	static void __addPositionals__(std::vector<std::vector<std::string> >& args,
 			std::vector<std::string> positionals) {
-		int curPositional = 0;
-		for (int k = 0; k < args.size(); k++) {
+		unsigned int curPositional = 0;
+		for (unsigned int k = 0; k < args.size(); k++) {
 			if (args[k][0][0] != '-') {
 				if (curPositional >= positionals.size()) {
 					throw "positionals exceeded declared positionals";
@@ -487,8 +476,8 @@ struct ArgumentParser {
 	}
 	std::string __dumpArgs__(){
 		std::stringstream tmp;
-		for(int k=0;k<args.size();k++){
-			for(int j=0;j<args[k].size();j++){
+		for(unsigned int k=0;k<args.size();k++){
+			for(unsigned int j=0;j<args[k].size();j++){
 				tmp<<"{"<<args[k][j]<<"} ";
 			}
 			tmp<<"\n";
@@ -496,7 +485,7 @@ struct ArgumentParser {
 		return tmp.str();
 	}
 	bool validate(){
-		for (int k = 0; k < __allShortNames__.size(); k++) {
+		for (unsigned int k = 0; k < __allShortNames__.size(); k++) {
 			if (!allArgs.at(__allShortNames__[k]).__validate__()) {
 				//std::cerr<<"Validation fails at "<<__allShortNames__[k]<<"\n"<<allArgs.at(__allShortNames__[k]).__getValidationMsg__() <<"\n";
 				return false;
@@ -507,7 +496,7 @@ struct ArgumentParser {
 		return true;
 	}
 	std::string getValidationMsg(){
-		for (int k = 0; k < __allShortNames__.size(); k++) {
+		for (unsigned int k = 0; k < __allShortNames__.size(); k++) {
 			if (!allArgs.at(__allShortNames__[k]).__validate__()) {
 				return allArgs.at(__allShortNames__[k]).__getValidationMsg__();
 			}
@@ -529,7 +518,7 @@ struct ArgumentParser {
 				__removeExistingPositionals__(args, positionalShortNames);
 		__addPositionals__(args, cleanedPositionals);
 		//__printArgs__(args);
-		for (int k = 0; k < args.size(); k++) {
+		for (unsigned int k = 0; k < args.size(); k++) {
 			allArgs.at(args[k][0]).__setVal__(args[k]);
 		}
         if(*(stringArgs.at("-I").optionVal)!=""){
@@ -540,7 +529,7 @@ struct ArgumentParser {
             __removeEqualities__(newArgs);
             __replaceLongNames__(newArgs, allNames2ShortNames);
             args.insert(args.end(), newArgs.begin(), newArgs.end());
-            for (int k = 0; k < newArgs.size(); k++) {
+            for (unsigned int k = 0; k < newArgs.size(); k++) {
                 allArgs.at(newArgs[k][0]).__setVal__(newArgs[k]);
             }
         }
@@ -552,8 +541,8 @@ struct ArgumentParser {
 
         if(this->verboseLevel>5){
             std::cerr<<"Argv Arguments:\n";
-            for(int k =0;k<args.size();k++){
-                for(int j=0;j<args[k].size();j++){
+            for(unsigned int k =0;k<args.size();k++){
+                for(unsigned int j=0;j<args[k].size();j++){
                     std::cerr<<" {"<<args[k][j]<<"} ";
                 }
                 std::cerr<<"\n";
@@ -587,12 +576,12 @@ struct ArgumentParser {
 		std::stringstream tmp;
 		tmp << __programName__ << ":\n\nGeneral description:\n" << help
 				<< "\n\nParameters:\n\n";
-		for (int k = 0; k < __allShortNames__.size(); k++) {
+		for (unsigned int k = 0; k < __allShortNames__.size(); k++) {
 			tmp << (allArgs.at(__allShortNames__[k])).getDescription() << "\n\n";
 		}
 		if (positionalShortNames.size() > 0) {
 			tmp << "Positional arguments:\n" << positionalShortNames[0];
-			for (int k = 1; k < positionalShortNames.size(); k++) {
+			for (unsigned int k = 1; k < positionalShortNames.size(); k++) {
 				tmp << " , " << positionalShortNames[k];
 			}
 			tmp << "\n\n";

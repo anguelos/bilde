@@ -14,8 +14,6 @@
 //http://41j.com/blog/2011/10/libtiff-rgb-image-to-greyscale-loading-and-saving/
 
 
-#ifdef _TIFFIO_
-
 #include <string>
 #include <list>
 #include <cmath>
@@ -394,8 +392,6 @@ template<> std::list<Buffer<t_uint8> > loadRGBATiff<t_uint8>(
 }
 }
 }
-
-#endif /*BILDE_ENABLE_LIBTIFF*/
 
 
 #endif /* BUFFER_CONTAINER_LIBTIFF_HPP_ */

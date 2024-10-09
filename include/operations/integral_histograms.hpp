@@ -8,6 +8,8 @@
 #ifndef INTEGRAL_HISTOGRAMS_HPP_
 #define INTEGRAL_HISTOGRAMS_HPP_
 
+#include <functional>
+
 namespace bilde {
 namespace operations {
 namespace __histogram__{
@@ -28,7 +30,7 @@ template <typename BINT,int NBBINS> void __getCountHistogram__(Buffer<t_uint8> i
 
 template <typename BINT,int NBBINS> void __getCummulativeHistogram__(Buffer<t_uint8> in,BINT* hist){
     t_uint8* inRow;
-    int x,y;
+    t_sz x,y;
     memset(hist,0,NBBINS*sizeof(BINT));
     for(y=0;y<in.height;y++){
         inRow=in.getRow(y);
@@ -191,14 +193,13 @@ template<typename T,int NBBINS,bool ISCUMMULATIVE> struct Histogram: public bild
     template <typename K>
     Histogram(Buffer<K> in){
         double min=PixelMetrics<K>::defaultBg;
-        double max=PixelMetrics<K>::defaultFg;
-        double ratio=(max-min)*(NBBINS-1);
-        int x,y;
+        //double max=PixelMetrics<K>::defaultFg;
+        //double ratio=(max-min)*(NBBINS-1);
         K* inRow;
         this->setTo(0);
-        for(y=0;y<in.height;y++){
+        for(t_sz y=0;y<in.height;y++){
             inRow=in.getRow(y);
-            for(x=0;x<in.width;x++){
+            for(t_sz x=0;x<in.width;x++){
                 this->data[int(round(inRow[x]-min))]++;
             }
         }
@@ -234,26 +235,19 @@ template <typename BINT,int NBBINS,bool ISCUMMULATIVE> struct IntegralHistogram{
     const int height;
     const t_sint64 binLinestride;
     const t_sint64 byteLinestride;
-    BINT* const __getHistogramAt__(int x,int y){
-        x=x*(x>0);
-        if(x>=width){x=width-1;}
-        y=y*(y>0);
-        if(y>=height){y=height-1;}
-
-        //x=x*(x>0)+(width-(x+1))*(x>width);
-        //y=y*(y>=0)+(height-(y+1))*(y>=height);
-        //std::cerr<<"y="<<y<<" x="<<x<<"\n";
-        return &(__data__[x*NBBINS+y*binLinestride]);
-    }
-    IntegralHistogram(Buffer<t_uint8> img):width(img.width),height(img.height),
+    
+    IntegralHistogram(Buffer<t_uint8> img):
         sharedData(new BINT[img.width*img.height*NBBINS]),
-        __data__((BINT*)(sharedData.get())),binLinestride(img.width*NBBINS),
-        byteLinestride(img.width*NBBINS*sizeof(BINT)){
+            __data__((BINT*)(sharedData.get())),
+            width(img.width),
+            height(img.height),
+            binLinestride(img.width*NBBINS),
+            byteLinestride(img.width*NBBINS*sizeof(BINT)){
         BINT data[NBBINS];
         int x,y,bin;
         t_uint8* inRow;
         BINT* topHist;
-        BINT* leftHist;
+        //BINT* leftHist;
         BINT* curHist;
         inRow=img.getRow(0);
         memset(data,0,NBBINS*sizeof(BINT));
@@ -267,7 +261,6 @@ template <typename BINT,int NBBINS,bool ISCUMMULATIVE> struct IntegralHistogram{
                 inRow=img.getRow(y);
                 memset(data,0,NBBINS*sizeof(BINT));
                 for(x=0;x<width;x++){
-                    data[inRow[x]]++;
                     curHist=__data__+y*binLinestride+x*NBBINS;
                     topHist=__data__+(y-1)*binLinestride+x*NBBINS;
                     curHist[0]=topHist[0]+data[0];
@@ -303,6 +296,18 @@ template <typename BINT,int NBBINS,bool ISCUMMULATIVE> struct IntegralHistogram{
             }
         }
     }
+    BINT* const __getHistogramAt__(int x,int y){
+        x=x*(x>0);
+        if(x>=width){x=width-1;}
+        y=y*(y>0);
+        if(y>=height){y=height-1;}
+
+        //x=x*(x>0)+(width-(x+1))*(x>width);
+        //y=y*(y>=0)+(height-(y+1))*(y>=height);
+        //std::cerr<<"y="<<y<<" x="<<x<<"\n";
+        return &(__data__[x*NBBINS+y*binLinestride]);
+    }
+    
     struct Iterator{
         IntegralHistogram<BINT,NBBINS,ISCUMMULATIVE> *const integralHistogram;
         const int width;
@@ -340,6 +345,24 @@ template <typename BINT,int NBBINS,bool ISCUMMULATIVE> struct IntegralHistogram{
             __updateCurentHistogram__();
         }
 
+        void applyLambdaFilter(Buffer<t_uint8> outImg,Buffer<t_uint8> inImg, const std::function<BINT(BINT, const BINT*)>& callback){
+            t_uint8* outRow;
+            t_uint8* inRow;
+            int x,y;
+            __curRow__=0;
+            for(y=0;y<height;y++){
+                __curRow__++;
+                outRow=outImg.getRow(y);
+                inRow=inImg.getRow(y);
+                __curCol__=0;
+                for(x=0;x<width;x++){
+                    __curCol__++;
+                    this->__updateCurentHistogram__();
+                    outRow[x]=t_uint8(callback(inRow[x], this->__curHist__));
+                }
+            }
+        }
+
         typedef double (*t_HistogramFeatureIIntOReal)(int val,const BINT* data);
         typedef double (*t_HistogramFeatureIVoidOReal)(const BINT* data);
         typedef double (*t_HistogramFeatureIRealOReal)(double val,const BINT* data);
@@ -347,7 +370,7 @@ template <typename BINT,int NBBINS,bool ISCUMMULATIVE> struct IntegralHistogram{
         typedef int (*t_HistogramFeatureIIntOInt)(int val,const BINT* data);
         typedef int (*t_HistogramFeatureIVoidOInt)(const BINT* data);
         typedef int (*t_HistogramFeatureIRealOInt)(double val,const BINT* data);
-
+        
         void applyFilter(Buffer<t_real64> outImg,Buffer<t_uint8> inImg,t_HistogramFeatureIIntOReal func){
             t_real64* outRow;
             t_uint8* inRow;
@@ -407,7 +430,7 @@ template <typename BINT,int NBBINS,bool ISCUMMULATIVE> struct IntegralHistogram{
             //std::cerr<<"Apply Filter: start\n";
             t_uint8* outRow;
             t_uint8* inRow;
-            const BINT* curHist;
+            //const BINT* curHist;
             int x,y;
             __curRow__=0;
             for(y=0;y<height;y++){
@@ -447,7 +470,7 @@ template <typename BINT,int NBBINS,bool ISCUMMULATIVE> struct IntegralHistogram{
         }
         void applyFilter(Buffer<t_uint8> outImg,t_HistogramFeatureIVoidOInt func){
             t_uint8* outRow;
-            const BINT* curHist;
+            //const BINT* curHist;
             int x,y;
             __curRow__=0;
             for(y=0;y<height;y++){
@@ -461,6 +484,8 @@ template <typename BINT,int NBBINS,bool ISCUMMULATIVE> struct IntegralHistogram{
                 }
             }
         }
+
+
     };
     Iterator getIterator(int radius){
         return Iterator(*this,-radius,-radius,radius,radius);

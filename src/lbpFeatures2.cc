@@ -1,6 +1,7 @@
 #include <ctime>
 #include <boost/algorithm/string/replace.hpp>
 
+//#include <opencv2/core/core.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
@@ -72,16 +73,17 @@ bilde::Buffer<bilde::t_uint8> getSubImage(bilde::Buffer<bilde::t_uint8> img,std:
         t*=img.height;b*=img.height;
         r--;b--;
     }
+
     if(bilde::util::Args().verboseLevel>5){
         std::cerr<<"Extracting patch at ["<<l<<","<<t<<","<<b<<","<<r<<"]\n";
     }
-    if(l<0 || l>=r ||r>=img.width|| t<0 || t>=b || b>=img.height ){
+    if(l<0 || l>=r ||r > img.width|| t<0 || t>=b || b > img.height ){
         if(bilde::util::Args().verboseLevel>3){
             std::cerr<<"Ignoring patch at ["<<l<<","<<t<<","<<b<<","<<r<<"]\n";
         }
         return bilde::Buffer<bilde::t_uint8>(1,1);
     }
-    return bilde::Buffer<bilde::t_uint8>(img,l,t,r,b);
+    return bilde::Buffer<bilde::t_uint8>(img, l, t, r, b);
 
 }
 
@@ -133,7 +135,7 @@ int main(int argc,char**argv){
             perFileTimer.tic();
             cv::Mat tmpInImg;
             //tmpInImg=getRGB2PCA(*iterFname);
-            tmpInImg=cv::imread(*iterFname, cv::IMREAD_GRAYSCALE);
+            tmpInImg=cv::imread(*iterFname, CV_LOAD_IMAGE_GRAYSCALE);
             cv::Mat inImg=cv::Mat::ones(tmpInImg.rows+whiteBorderSize*2,tmpInImg.cols+whiteBorderSize*2 , CV_8U)*255;
             tmpInImg.copyTo(inImg.colRange(whiteBorderSize,inImg.cols-whiteBorderSize).rowRange(whiteBorderSize,inImg.rows-whiteBorderSize));
 

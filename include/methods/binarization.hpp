@@ -1,9 +1,11 @@
 #ifndef LOF_BINARIZATION_HPP
 #define LOF_BINARIZATION_HPP
 #include "bilde.hpp"
+
 namespace bilde{
 namespace methods{
 namespace binarization{
+
 
 inline Buffer<t_uint8> getOtsuBinarization(Buffer<t_uint8> in) {
     Buffer<t_uint8> res(in.width, in.height);
@@ -36,7 +38,7 @@ template <int BITDEPTH> void __lofBinarization__(Buffer<t_uint8> outImg,Buffer<t
     Buffer<t_uint8> thresholded(dividedImg.width,dividedImg.height);
     bilde::operations::essential::__setTo__<t_uint8>(outImg,0);
     //operations::essential::__incrementBy__<t_uint8>(dividedImg,dividedImg,1);
-    for(int radius=((dividedImg.width>dividedImg.height)?dividedImg.width/4:dividedImg.height/4);radius<10;radius=radius/2){
+    for(int radius=((dividedImg.width>dividedImg.height)?dividedImg.width/4:dividedImg.height/4);radius>10;radius=radius/2){
 
         bilde::util::timer::Timer tLof;
         ih.getIterator(radius).applyFilter(filter,operations::__histogram__::__HistogramOperations__<t_uint32,NBBINS,false>::__getOtsu__);
@@ -47,6 +49,7 @@ template <int BITDEPTH> void __lofBinarization__(Buffer<t_uint8> outImg,Buffer<t
         operations::essential::__pixelWiseThreshold__<t_uint8>(thresholded,dividedImg,filter,255,0);
         operations::essential::__pixelWiseMax__<t_uint8>(outImg,thresholded,outImg);
     }
+
     //operations::essential::__pixelWiseMin__<t_uint8>(outImg,outImg,getOtsuBinarization(filter));
     //getOtsuBinarization(filter).copyTo(outImg);
     //filter.copyTo(outImg);
@@ -54,15 +57,14 @@ template <int BITDEPTH> void __lofBinarization__(Buffer<t_uint8> outImg,Buffer<t
     //operations::essential::__multiplyBy__<t_uint8>(outImg,outImg,DIVIDEBY);
 }
 
-inline Buffer<t_uint8> getLofBinarization(Buffer<t_uint8> inimg,int bitdepth){
-    Buffer<t_uint8> outimg(inimg.width,inimg.height);
+inline Buffer<t_uint8> getLofBinarization(Buffer<t_uint8> inimg, Buffer<t_uint8> outimg, int bitdepth){
     switch (bitdepth) {
-        case 3:__lofBinarization__<3>(outimg,inimg); return outimg;break;
-        case 4:__lofBinarization__<4>(outimg,inimg); return outimg;break;
-        case 5:__lofBinarization__<5>(outimg,inimg); return outimg;break;
-        case 6:__lofBinarization__<6>(outimg,inimg); return outimg;break;
-        case 7:__lofBinarization__<7>(outimg,inimg); return outimg;break;
-        case 8:__lofBinarization__<8>(outimg,inimg); return outimg;break;
+        case 3:__lofBinarization__<3>(outimg,inimg); break;
+        case 4:__lofBinarization__<4>(outimg,inimg); break;
+        case 5:__lofBinarization__<5>(outimg,inimg); break;
+        case 6:__lofBinarization__<6>(outimg,inimg); break;
+        case 7:__lofBinarization__<7>(outimg,inimg); break;
+        case 8:__lofBinarization__<8>(outimg,inimg); break;
         default:
             std::cerr<<"LOF Binarization for bitdepth "<<bitdepth<<" not implemented.\nAborting!";
         throw "LOF Binarize, bad bitdepth!"; break;

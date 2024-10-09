@@ -61,7 +61,7 @@ struct LabeledComponentSet: public Buffer<t_label>{
     std::map<t_label,LabeledComponent> allComponents;
     void __updateComponents__(){
         this->allComponents.clear();
-        int x,y;
+        t_sz x,y;
         t_label* row;
         allComponents[0]=LabeledComponent(0,0,0);
         LabeledComponent& zeroComponent=allComponents[0];
@@ -146,8 +146,8 @@ struct LabeledComponentSet: public Buffer<t_label>{
         int myNbComponents=this->allComponents.rbegin()->first+1;
         int csNbComponents=cs.allComponents.rbegin()->first+1;
         Buffer<t_uint32> res(csNbComponents,myNbComponents);
-        int x,y,xTo,xFrom,yTo,yFrom;
-        t_label * myRow;t_label *csRow;t_label curLabel;
+        t_sz x,y,xTo,xFrom,yTo,yFrom;
+        t_label * myRow;t_label *csRow;//t_label curLabel;
         t_uint32 * resLine;
         for(y=0;y<res.height;y++){
             std::memset(res.getRow(y),0,res.width*sizeof(t_uint32));

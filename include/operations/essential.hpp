@@ -14,7 +14,7 @@ namespace essential{
 
 template <typename T> void __setTo__(Buffer<T> io,T inVal){
 	T* row;
-	int y,x;
+	t_sz y,x;
 	for(y=0;y<io.height;y++){
 		row=io.getRow(y);
 		for(x=0;x<io.width;x++){
@@ -149,7 +149,7 @@ template <typename T> void __nornalize__(Buffer<T> out,Buffer<T> in){
 template <typename T> void __bitShiftRight__(Buffer<T> out,Buffer<T> in,int nbBits){
     T* outRow;
     T* inRow;
-    int x,y;
+    t_sz x,y;
     for(y=0;y<in.height;y++){
         inRow=in.getRow(y);
         outRow=out.getRow(y);
@@ -163,7 +163,7 @@ template <typename T> void __bitShiftRight__(Buffer<T> out,Buffer<T> in,int nbBi
 template <typename T> void __bitShiftLeft__(Buffer<T> out,Buffer<T> in,int nbBits){
     T* outRow;
     T* inRow;
-    int x,y;
+    t_sz x,y;
     for(y=0;y<in.height;y++){
         inRow=in.getRow(y);
         outRow=out.getRow(y);
@@ -177,7 +177,7 @@ template <typename T> void __bitShiftLeft__(Buffer<T> out,Buffer<T> in,int nbBit
 template <typename T> void __subtractFrom__(Buffer<T> out,Buffer<T> in,T inVal){
 	T* outRow;
 	T* inRow;
-	int x,y;
+	t_sz x,y;
 	for(y=0;y<in.height;y++){
 		inRow=in.getRow(y);
 		outRow=out.getRow(y);
@@ -191,7 +191,7 @@ template <typename T> void __subtractFrom__(Buffer<T> out,Buffer<T> in,T inVal){
 template <typename T> void __divideBy__(Buffer<T> out,Buffer<T> in,T inVal){
 	T* outRow;
 	T* inRow;
-	int x,y;
+	t_sz x,y;
 	for(y=0;y<in.height;y++){
 		inRow=in.getRow(y);
 		outRow=out.getRow(y);
@@ -204,7 +204,7 @@ template <typename T> void __divideBy__(Buffer<T> out,Buffer<T> in,T inVal){
 template <typename T> void __multiplyBy__(Buffer<T> out,Buffer<T> in,T inVal){
     T* outRow;
     T* inRow;
-    int x,y;
+    t_sz x,y;
     for(y=0;y<in.height;y++){
         inRow=in.getRow(y);
         outRow=out.getRow(y);
@@ -217,7 +217,7 @@ template <typename T> void __multiplyBy__(Buffer<T> out,Buffer<T> in,T inVal){
 template <typename T> void __incrementBy__(Buffer<T> out,Buffer<T> in,T inVal){
 	T* outRow;
 	T* inRow;
-	int x,y;
+	t_sz x,y;
 	for(y=0;y<in.height;y++){
 		inRow=in.getRow(y);
 		outRow=out.getRow(y);
@@ -230,7 +230,7 @@ template <typename T> void __incrementBy__(Buffer<T> out,Buffer<T> in,T inVal){
 template <typename T> void __inverce__(Buffer<T> out,Buffer<T> in){
 	T* outRow;
 	T* inRow;
-	int x,y;
+	t_sz x,y;
 	for(y=0;y<in.height;y++){
 		inRow=in.getRow(y);
 		outRow=out.getRow(y);
@@ -243,7 +243,7 @@ template <typename T> void __inverce__(Buffer<T> out,Buffer<T> in){
 template <typename T> void  __threshold__(Buffer<T> out,Buffer<T> in,T inMinimalTrue,T inTrueVal,T inFalseVal){
 	T* inRow;
 	T* outRow;
-	int x,y;
+	t_sz x,y;
 	for(y=0;y<in.height;y++){
 		inRow=in.getRow(y);
 		outRow=out.getRow(y);
@@ -257,7 +257,7 @@ template <typename T> void  __pixelWiseThreshold__(Buffer<T> outImg,Buffer<T> in
     T* inRow;
     T* outRow;
     T* thresholdRow;
-    int x,y;
+    t_sz x,y;
     for(y=0;y<inImg.height;y++){
         inRow=inImg.getRow(y);
         outRow=outImg.getRow(y);
@@ -274,7 +274,7 @@ template <typename T > void __pixelWiseMin__(Buffer<T> out,Buffer<T> in1,Buffer<
 	T* outRow;
 	T* inRow1;
 	T* inRow2;
-	int x,y;
+	t_sz x,y;
 	for(y=0;y<in1.height;y++){
 		outRow=out.getRow(y);
 		inRow1=in1.getRow(y);
@@ -291,7 +291,7 @@ template <typename T > void __pixelWiseMax__(Buffer<T> out,Buffer<T> in1,Buffer<
 	T* outRow;
 	T* inRow1;
 	T* inRow2;
-	int x,y;
+	t_sz x,y;
 	for(y=0;y<in1.height;y++){
 		outRow=out.getRow(y);
 		inRow1=in1.getRow(y);
@@ -333,7 +333,7 @@ template <typename T> void __randomize__(Buffer<T> out){
 	}
 }
 template <typename T>void __copy__(Buffer<T> dst,Buffer<T>src){
-    int x,y;
+    t_sz x,y;
     T* inRow;
     T*outRow;
     for(y=0;y<dst.height;y++){
@@ -354,7 +354,7 @@ template<> std::vector<int> getHistogram<t_uint8>(Buffer<t_uint8> img,int nbBins
     t_uint8* rowEnd;
     if(nbBins!=256){
         const double coef=256/double(nbBins);
-        for(int y =0 ;y<img.height;y++){
+        for(t_sz y =0 ;y<img.height;y++){
             curPixel=img.getRow(y);
             rowEnd=curPixel+img.width;
             while(curPixel!=rowEnd){
@@ -363,7 +363,7 @@ template<> std::vector<int> getHistogram<t_uint8>(Buffer<t_uint8> img,int nbBins
             }
         }
     }else{
-        for(int y =0 ;y<img.height;y++){
+        for(t_sz y =0 ;y<img.height;y++){
             curPixel=img.getRow(y);
             rowEnd=curPixel+img.width;
             while(curPixel!=rowEnd){
