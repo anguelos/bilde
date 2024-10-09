@@ -44,3 +44,16 @@ Run:
 ```bash
 wine /tmp/lbp_features2.exe -i ./sample_data/PICT2466.png > /tmp/features.csv
 ```
+
+
+## Python extention (pybilde)
+* Install build dependencies
+```bash
+pip install cibuildwheel
+```
+
+Build bdist without a CI
+```bash
+CIBW_BUILD="cp313t-manylinux_x86_64 cp313t-manylinux_x86_64 cp312-manylinux_x86_64 cp311-manylinux_x86_64 cp310-manylinux_x86_64 cp39-manylinux_x86_64 cp38-manylinux_x86_64 cp37-manylinux_x86_64 cp36-manylinux_x86_64" CIBW_BEFORE_BUILD="yum install -y boost-devel" cibuildwheel --platform linux --output-dir wheelhouse
+CIBW_SKIP="pp310-manylinux_i686 pp39-manylinux_i686 pp38-manylinux_i686 pp37-manylinux_i686 pp36-manylinux_i686 pp310-manylinux_x86_64  pp39-manylinux_x86_64 pp38-manylinux_x86_64  pp37-manylinux_x86_64 pp36-manylinux_x86_64" CIBW_BEFORE_BUILD="yum install -y boost-devel" cibuildwheel --platform linux --output-dir wheelhouse
+```
