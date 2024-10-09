@@ -15,7 +15,7 @@ def extract_features(img_path: str) -> np.ndarray:
 
 def block_normalise(values: np.ndarray, block_sizes: Union[None, List[int]] = None, suppress_bins: List[int] = [0]) -> np.ndarray:
     if block_sizes is None:
-        block_sizes = [256]*(values.shape[1]/256)
+        block_sizes = [256]*(values.shape[1]//256)
     res_values = values.copy()
     for block in range(len(block_sizes)):
         block_start = sum(block_sizes[:block])
@@ -24,7 +24,7 @@ def block_normalise(values: np.ndarray, block_sizes: Union[None, List[int]] = No
             res_values[:, 256] = 0
             res_values[:, supress_bin + block_start] = 0
         block_sum = res_values[:, block_start: block_end].sum(axis=1)
-        res_values[:, block_start:block_end] /= block_sum[:, None]
+        res_values[:, block_start:block_end] = res_values[:, block_start:block_end] // block_sum[:, None]
     return res_values
 
 
