@@ -65,6 +65,9 @@ add_library( libtiff SHARED IMPORTED )
 add_library( libopencv_highgui SHARED IMPORTED )
 add_library( libopencv_core SHARED IMPORTED )
 
+
+find_package(Boost REQUIRED COMPONENTS system filesystem)
+
 if(ENABLE_CVMAT)
 find_package(OpenCV REQUIRED)
 include_directories( ${OpenCV_INCLUDE_DIRS} )
@@ -126,10 +129,10 @@ target_link_libraries (bilde_textline_segment PRIVATE ${OpenCV_LIBS})
 endif()  # ENABLE_CVMAT
 
 if(ENABLE_PYBIND11)
-    file(GLOB PYTHON_INCLUDE_DIR "${PYTHON_VENV_PATH}/include/python3.*")
-    find_package(pybind11 REQUIRED
-    HINTS "/usr/local/lib" "/opt/local/lib" "/usr/lib" "/usr/lib/x86_64-linux-gnu" "${VIRTUAL_ENVz}"
-    )
-    pybind11_add_module(bilde src/bildepybind.cc ${HEADERS})
-    target_link_libraries (bilde PRIVATE ${OpenCV_LIBS})
+#    file(GLOB PYTHON_INCLUDE_DIR "${PYTHON_VENV_PATH}/include/python3.*")
+#    find_package(pybind11 REQUIRED
+#    HINTS "/usr/local/lib" "/opt/local/lib" "/usr/lib" "/usr/lib/x86_64-linux-gnu" "${VIRTUAL_ENVz}"
+#    )
+#    pybind11_add_module(bilde src/bildepybind.cc ${HEADERS})
+#    target_link_libraries (bilde PRIVATE ${OpenCV_LIBS} Boost::math Boost::shared_ptr)
 endif()

@@ -61,14 +61,14 @@ int main(int argc,char** argv){
                 cv::imshow("Input Image",inImg);
                 cv::imshow("Output Image",outImg);
                 std::cerr<<"Displaying Images, press any key to continue.\n";
-                cv::waitKey();
+                cv::waitKey(); getLofBinarization
             }
             if(VERBOSE>2){std::cerr<<"Saving to :"<<outFname<<"\n";}
             cv::imwrite(outFname,outImg);
         }else if(method=="lof"){
             cv::Mat inImg=cv::imread(inFname, cv::IMREAD_GRAYSCALE);
             cv::Mat outImg=cv::Mat(inImg.rows,inImg.cols, CV_8UC1 );
-            bilde::methods::binarization::getLofBinarization(inImg,bitDepth).copyTo(outImg);
+            bilde::methods::binarization::getLofBinarization(inImg, outImg, bitDepth);
             if(VERBOSE>5){
                 cv::imshow("Input Image",inImg);
                 cv::imshow("Output Image",outImg);

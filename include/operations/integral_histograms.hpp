@@ -8,6 +8,8 @@
 #ifndef INTEGRAL_HISTOGRAMS_HPP_
 #define INTEGRAL_HISTOGRAMS_HPP_
 
+#include <functional>
+
 namespace bilde {
 namespace operations {
 namespace __histogram__{
@@ -28,7 +30,7 @@ template <typename BINT,int NBBINS> void __getCountHistogram__(Buffer<t_uint8> i
 
 template <typename BINT,int NBBINS> void __getCummulativeHistogram__(Buffer<t_uint8> in,BINT* hist){
     t_uint8* inRow;
-    int x,y;
+    t_sz x,y;
     memset(hist,0,NBBINS*sizeof(BINT));
     for(y=0;y<in.height;y++){
         inRow=in.getRow(y);
@@ -343,6 +345,24 @@ template <typename BINT,int NBBINS,bool ISCUMMULATIVE> struct IntegralHistogram{
             __updateCurentHistogram__();
         }
 
+        void applyLambdaFilter(Buffer<t_uint8> outImg,Buffer<t_uint8> inImg, const std::function<BINT(BINT, const BINT*)>& callback){
+            t_uint8* outRow;
+            t_uint8* inRow;
+            int x,y;
+            __curRow__=0;
+            for(y=0;y<height;y++){
+                __curRow__++;
+                outRow=outImg.getRow(y);
+                inRow=inImg.getRow(y);
+                __curCol__=0;
+                for(x=0;x<width;x++){
+                    __curCol__++;
+                    this->__updateCurentHistogram__();
+                    outRow[x]=t_uint8(callback(inRow[x], this->__curHist__));
+                }
+            }
+        }
+
         typedef double (*t_HistogramFeatureIIntOReal)(int val,const BINT* data);
         typedef double (*t_HistogramFeatureIVoidOReal)(const BINT* data);
         typedef double (*t_HistogramFeatureIRealOReal)(double val,const BINT* data);
@@ -350,7 +370,7 @@ template <typename BINT,int NBBINS,bool ISCUMMULATIVE> struct IntegralHistogram{
         typedef int (*t_HistogramFeatureIIntOInt)(int val,const BINT* data);
         typedef int (*t_HistogramFeatureIVoidOInt)(const BINT* data);
         typedef int (*t_HistogramFeatureIRealOInt)(double val,const BINT* data);
-
+        
         void applyFilter(Buffer<t_real64> outImg,Buffer<t_uint8> inImg,t_HistogramFeatureIIntOReal func){
             t_real64* outRow;
             t_uint8* inRow;
@@ -410,7 +430,7 @@ template <typename BINT,int NBBINS,bool ISCUMMULATIVE> struct IntegralHistogram{
             //std::cerr<<"Apply Filter: start\n";
             t_uint8* outRow;
             t_uint8* inRow;
-            const BINT* curHist;
+            //const BINT* curHist;
             int x,y;
             __curRow__=0;
             for(y=0;y<height;y++){
@@ -464,6 +484,8 @@ template <typename BINT,int NBBINS,bool ISCUMMULATIVE> struct IntegralHistogram{
                 }
             }
         }
+
+
     };
     Iterator getIterator(int radius){
         return Iterator(*this,-radius,-radius,radius,radius);

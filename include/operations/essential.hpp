@@ -333,7 +333,7 @@ template <typename T> void __randomize__(Buffer<T> out){
 	}
 }
 template <typename T>void __copy__(Buffer<T> dst,Buffer<T>src){
-    int x,y;
+    t_sz x,y;
     T* inRow;
     T*outRow;
     for(y=0;y<dst.height;y++){

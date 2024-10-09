@@ -57,15 +57,14 @@ template <int BITDEPTH> void __lofBinarization__(Buffer<t_uint8> outImg,Buffer<t
     //operations::essential::__multiplyBy__<t_uint8>(outImg,outImg,DIVIDEBY);
 }
 
-inline Buffer<t_uint8> getLofBinarization(Buffer<t_uint8> inimg,int bitdepth){
-    Buffer<t_uint8> outimg(inimg.width,inimg.height);
+inline Buffer<t_uint8> getLofBinarization(Buffer<t_uint8> inimg, Buffer<t_uint8> outimg, int bitdepth){
     switch (bitdepth) {
-        case 3:__lofBinarization__<3>(outimg,inimg); return outimg;break;
-        case 4:__lofBinarization__<4>(outimg,inimg); return outimg;break;
-        case 5:__lofBinarization__<5>(outimg,inimg); return outimg;break;
-        case 6:__lofBinarization__<6>(outimg,inimg); return outimg;break;
-        case 7:__lofBinarization__<7>(outimg,inimg); return outimg;break;
-        case 8:__lofBinarization__<8>(outimg,inimg); return outimg;break;
+        case 3:__lofBinarization__<3>(outimg,inimg); break;
+        case 4:__lofBinarization__<4>(outimg,inimg); break;
+        case 5:__lofBinarization__<5>(outimg,inimg); break;
+        case 6:__lofBinarization__<6>(outimg,inimg); break;
+        case 7:__lofBinarization__<7>(outimg,inimg); break;
+        case 8:__lofBinarization__<8>(outimg,inimg); break;
         default:
             std::cerr<<"LOF Binarization for bitdepth "<<bitdepth<<" not implemented.\nAborting!";
         throw "LOF Binarize, bad bitdepth!"; break;
