@@ -29,6 +29,11 @@ py::array_t<uint8_t> lbp_image(py::array_t<uint8_t> img, int nb_samples=8, doubl
     py::buffer_info in_buf = img.request();
     int rows = in_buf.shape[0];
     int cols = in_buf.shape[1];
+
+    if (((radius + 3) * 2 >= rows ) || ((radius + 3) * 2 >= cols)){
+        throw std::runtime_error("The radius is too big for the image size.");
+    }
+
     py::array_t<uint8_t> output_img = py::array_t<uint8_t>({rows, cols});
     py::buffer_info out_buf = output_img.request();
 
@@ -67,6 +72,9 @@ py::array_t<int> lbp_features(py::array_t<uint8_t> img, int nb_samples, std::vec
     bilde::Buffer<bilde::t_uint8> inputBuffer(in_buf);
     std::vector<int> results;
     for (const double& radius : radii){
+        if (((radius + 3) * 2 >= rows ) || ((radius + 3) * 2 >= cols)){
+            throw std::runtime_error("The radius is too big for the image size.");
+        }
         int erode = int(std::ceil(radius));
         auto lbp=bilde::operations::lbp::__lbp_util__::LbpIterator<bilde::t_uint8>(in_buf, nb_samples, radius, interpolation, cmp_operation, cmp_threshold);
         bilde::Buffer<bilde::t_uint8> chopped_out_buf=bilde::Buffer<bilde::t_uint8>(out_buf, erode, erode, cols - (erode + 1), rows - (erode + 1));
