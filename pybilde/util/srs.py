@@ -13,18 +13,16 @@ def extract_features(img_path: str) -> np.ndarray:
     return features
 
 
-def block_normalise(values: np.ndarray, block_sizes: Union[None, List[int]] = None, suppress_bins: List[int] = [0]) -> np.ndarray:
-    if block_sizes is None:
-        block_sizes = [256]*(values.shape[1]//256)
-    res_values = values.copy()
-    for block in range(len(block_sizes)):
-        block_start = sum(block_sizes[:block])
-        block_end = sum(block_sizes[:block+1])
+def block_normalise(values: np.ndarray, suppress_bins: List[int] = [0], e: float = .00000000001) -> np.ndarray:
+    assert values.shape[1] == 12 * 256
+    res_values = values.copy().astype(np.float64)
+    for block in range(12):
+        block_start = 256 * block
+        block_end = 256 * (block + 1)
         for supress_bin in suppress_bins:
-            res_values[:, 256] = 0
-            res_values[:, supress_bin + block_start] = 0
-        block_sum = res_values[:, block_start: block_end].sum(axis=1)
-        res_values[:, block_start:block_end] = res_values[:, block_start:block_end] // block_sum[:, None]
+            res_values[:, block_start + supress_bin] = 0
+        block_sum = res_values[:, block_start: block_end].sum(axis=1)[:, None] + e
+        res_values[:, block_start:block_end] = res_values[:, block_start:block_end] / block_sum
     return res_values
 
 
@@ -54,10 +52,8 @@ def post_pca_normalise(values: np.array) -> np.array:
 
 def apply_pca(values: np.ndarray, pca_values: Union[None, np.array] = None, n_components: int = 200) -> np.ndarray:
     if pca_values is None:
-        return values @ pca_values.T
-    else:
-        pca_values = pca_train(values)
-        return values @ pca_values.T
+        pca_values = pca_train(values)    
+    return values @ pca_values.T
 
 
 def pca_train(values: np.ndarray, n_components: int = 200, max_augmentation: int = 5, noise: float = .000000001) -> np.array:
@@ -74,9 +70,9 @@ def pca_train(values: np.ndarray, n_components: int = 200, max_augmentation: int
     return pca.components_
 
 
-def srs(histograms: np.array, pca_componets: np.array) -> np.array:
+def srs(histograms: np.array, pca_components: np.array) -> np.array:
     values = pre_pca_normalise(histograms)
-    values = apply_pca(values, pca_componets)
+    values = apply_pca(values, pca_values=pca_components)
     values = post_pca_normalise(values)
     return values
 
