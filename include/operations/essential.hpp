@@ -12,6 +12,7 @@ namespace bilde{
 namespace operations{
 namespace essential{
 
+
 template <typename T> void __setTo__(Buffer<T> io,T inVal){
 	T* row;
 	t_sz y,x;
@@ -22,6 +23,41 @@ template <typename T> void __setTo__(Buffer<T> io,T inVal){
 		}
 	}
 }
+
+
+template <typename T> typename Buffer<T>::t_accumulate getSum(Buffer<T> in){
+	typename Buffer<T>::t_accumulate res = 0;
+	const T* row;
+	t_sz x,y;
+	for(y = 0; y < in.height; y++){
+		row = in.getConstRow(y);
+		for(x=0; x < in.width; x++){
+			res += row[x];
+		}
+	}
+	return res;
+}
+
+
+template <typename T> typename Buffer<T>::t_accumulate countEqual(Buffer<T> in1, Buffer<T> in2){
+	if(in1.width != in2.width || in1.height != in2.height){
+		throw std::runtime_error("Input images must have the same size");
+	}
+	typename Buffer<T>::t_accumulate res = 0;
+	const T* row1;
+	const T* row2;
+	t_sz x,y;
+	for(y = 0; y < in1.height; y++){
+		row1 = in1.getConstRow(y);
+		row2 = in2.getConstRow(y);
+		for(x=0; x < in1.width; x++){
+			res += (row1[x]==row2[x]);
+		}
+	}
+	return res;
+}
+
+
 
 template <typename T> T getMaxValue(Buffer<T> in){
 	T res=in.__data__[0];

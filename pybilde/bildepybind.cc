@@ -208,7 +208,6 @@ py::array_t<bilde::t_uint8> lof_binarize(py::array_t<bilde::t_uint8> img, int bi
 
 
 py::array_t<bilde::t_uint8> textline_segment(py::array_t<bilde::t_uint8> img,int windowWidth, int windowHeight,int tracerDencity,int compareDistance,int minimumLetterHeight,int maximumLetterHeight){
-    throw "not_implemented";
     // Ensure the input is a 2D array
     if (img.ndim() != 2) {
         throw std::runtime_error("Input image must be a 2D array");
@@ -218,17 +217,22 @@ py::array_t<bilde::t_uint8> textline_segment(py::array_t<bilde::t_uint8> img,int
     if (img.dtype().kind() != 'u' || img.dtype().itemsize() != 1) {
         throw std::runtime_error("Input image must be of type uint8");
     }
-
+    std::cerr<<"SEGM 1"<<std::endl;
     // Get the shape of the array (rows and columns)
     py::buffer_info in_buf = img.request();
     int rows = in_buf.shape[0];
     int cols = in_buf.shape[1];
     
     py::array_t<bilde::t_uint8> output_img = py::array_t<bilde::t_uint8>({rows, cols});  // creating a temporary buffer
+    std::cerr<<"SEGM 2"<<std::endl;
     py::buffer_info out_buf = output_img.request();
-
+    std::cerr<<"SEGM 3"<<std::endl;
+    bilde::methods::textline_segmentation::TextlineSegmenter segm;
+    std::cerr<<"SEGM 3.5"<<std::endl;
+    segm.call(out_buf, in_buf);
+    std::cerr<<"SEGM 4"<<std::endl;
+    return output_img;
 }
-
 
 
 PYBIND11_MODULE(bilde, m) {

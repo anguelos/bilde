@@ -129,6 +129,9 @@ template<typename T> struct Buffer {
     ///an existing Buffer even as a subregion, a shallow copy is performed.
 	typedef T t_pixel;
 	typedef boost::shared_ptr<T> t_pix_smartptr;
+	
+	using t_accumulate = typename std::conditional<std::is_integral<T>::value, long, double>::type;
+
 	boost::shared_ptr<t_uint8> __ownedStorage__;
 	t_uint8* const __data__;
 	const t_sz width; ///Number of pixels in a horizontal line of the image
