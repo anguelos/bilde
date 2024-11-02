@@ -23,29 +23,41 @@ template<typename T, unsigned int PAD> struct IntegralImage{
 
     IntegralImage(const Buffer<T> &in):
         __storage__(in.width + 2 * PAD,in.height + 2 * PAD),
-        __centered_storage__(__storage__, PAD, PAD, in.width,in.height),
+        __centered_storage__(__storage__, PAD, PAD, in.width, in.height),
         width(in.width),
         height(in.height),
         __lineStride__(__storage__.__linestride__){
-        std::fill(__storage__.getRow(0), __storage__.getRow(height*PAD*2) + 2*PAD+ in.width, ACCUMULATE_T{});
+        //    std::cerr<<"IntegralImage 1"<<std::endl;
+        for(t_sz y=0;y<__storage__.height;y++){
+        //    std::cerr<<"IntegralImage 1.1:"<<y<<std::endl;
+            ACCUMULATE_T* row = __storage__.getRow(y);
+            for(t_sz x=0;x<__storage__.width;x++){
+                row[x] = 0;
+            }
+        }
+        //std::fill(__storage__.getRow(0), __storage__.getRow(height*PAD*2) + 2*PAD+ in.width, ACCUMULATE_T{});
+        //std::cerr<<"IntegralImage 2"<<std::endl;
         ACCUMULATE_T *accRow;
         ACCUMULATE_T *prevRow;
         const T* inRow;
         accRow = __storage__.getRow(0);
         inRow = in.getConstRow(0);
         accRow[0] = inRow[0];
+        //std::cerr<<"IntegralImage 3"<<std::endl;
         for (t_sz x = 1; x < width; x++) {
             accRow[x] = accRow[x-1] + inRow[x];
         }
-        for(t_sz y=1;y<height;y++){
+        //std::cerr<<"IntegralImage 4"<<std::endl;
+        for(t_sz y=1; y<height; y++){
             prevRow = __storage__.getRow(y-1);
             accRow = __storage__.getRow(y);
             inRow = in.getConstRow(y);
             accRow[0] = inRow[0] + prevRow[0];
-            for(t_sz x=1;x<width;x++){
+            for(t_sz x=1; x<width; x++){
                 accRow[x] = prevRow[x] + inRow[x];
             }
         }
+        //std::cerr<<"IntegralImage 5"<<std::endl;
     }
     struct IntegralImageConstIterator{
         const IntegralImage & iimg;
@@ -153,11 +165,15 @@ template<typename T, unsigned int PAD> struct IntegralImage{
 
 template<typename T, unsigned int PAD> void getBoxFilter(const Buffer<T> & in, Buffer<T> & out, t_sz width, t_sz height){
     if (width / 2 >= PAD || height / 2 >= PAD){
-        throw "getBoxFilter: width/2 >= PAD || height/2 >= PAD";
+        throw std::runtime_error("getBoxFilter: width/2 >= PAD || height/2 >= PAD");
     }
+    std::cerr<<"Box filter 1"<<std::endl;
     IntegralImage<T,PAD> iimg(in);
+    std::cerr<<"Box filter 2"<<std::endl;
     typename IntegralImage<T,PAD>::IntegralImageConstIterator iimgIt(iimg, -width/2, -height/2, width/2, height/2);
+    std::cerr<<"Box filter 3"<<std::endl;
     iimgIt.getAvgImage(out);
+    std::cerr<<"Box filter 4"<<std::endl;
 }
 
 

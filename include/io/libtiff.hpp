@@ -18,6 +18,7 @@
 #include <list>
 #include <cmath>
 #include <vector>
+#include <tiff.h>
 
 namespace bilde {
 namespace io {
@@ -140,8 +141,7 @@ template<> bool saveTiffColor<t_uint8>(std::vector<Buffer<t_uint8> > RGB,
 template<typename T> bool saveTiffGrayscale(Buffer<T> img,
 		std::string filename);
 
-template<> bool saveTiffGrayscale<t_uint8>(Buffer<t_uint8> img,
-		std::string filename) {
+template<> bool saveTiffGrayscale<t_uint8>(Buffer<t_uint8> img, std::string filename) {
 	TIFF *output_image;
 	int x, y;
 	t_uint8* inRow;
@@ -313,7 +313,7 @@ template<> Buffer<t_uint8> loadTiffGrayscale<t_uint8>(std::string filename) {
 		}
 		TIFFClose(tif);
 		return res;
-	} else {
+	}else {
 		throw "loadTiffFile<t_uint8>: could not open TIFF file";
 	}
 }

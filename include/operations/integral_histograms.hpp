@@ -12,6 +12,7 @@
 
 namespace bilde {
 namespace operations {
+
 namespace __histogram__{
 
 
@@ -223,10 +224,89 @@ template<typename T,int NBBINS,bool ISCUMMULATIVE> struct Histogram: public bild
 
 namespace integral_histograms{
 
+
+
 template <typename BINT,int NBBINS,bool ISCUMMULATIVE> struct IntegralHistogram{
+    template<typename T>void fill_onehot_image(Buffer<T> img){
+        for(t_sz y=0; y<width; y++){
+            const T* inRow=img.getConstRow(y);
+            for(t_sz x=0; x<width; x++){
+                BINT* cur_hist=this->__getHistogramAt__(x,y);
+                std::memset(cur_hist, 0, sizeof(BINT)*NBBINS);
+                cur_hist[inRow[x]]=1;
+            }
+        }
+    }
+    template<typename T>void fill_integral_himage(Buffer<T> img){
+        BINT nullhistogram[NBBINS];
+        for(t_sz y=0; y<width; y++){
+            const T* inRow=img.getConstRow(y);
+            for(t_sz x=0; x<width; x++){
+                BINT* cur_hist=this->__getHistogramAt__(x,y);
+                const BINT* left_histogram;
+                const BINT* top_histogram;
+                const BINT* topleft_histogram;
+
+                if(y>0){
+                    top_histogram = this->__getHistogramAt__(x,y-1);
+                    topleft_histogram = this->__getHistogramAt__(x-1,y-1);
+                }else{
+                    top_histogram = nullhistogram;
+                    topleft_histogram = nullhistogram;
+                }
+
+                if(x>0){
+                    left_histogram = this->__getHistogramAt__(x-1,y); // top_left already assigned from the y>0 check
+                }else{
+                    left_histogram = nullhistogram;
+                    topleft_histogram = nullhistogram; // Essentially topleft_histogram (x>0 && y>0)
+                }
+
+                for(int n =0;n<NBBINS;n++){
+                    cur_hist[n] = top_histogram[n] + left_histogram[n] - topleft_histogram[n];
+                }
+                cur_hist[inRow[x]]+=1;
+            }
+        }
+    }
+    template<typename T>void fill_cumulative_integral_himage(Buffer<T> img){
+        BINT nullhistogram[NBBINS];
+        std::memset(nullhistogram, 0, sizeof(BINT)*NBBINS);
+        for(t_sz y=0; y<height; y++){
+            const T* inRow=img.getConstRow(y);
+            for(t_sz x=0; x<width; x++){
+                BINT* cur_hist=this->__getHistogramAt__(x,y);
+                const BINT* left_histogram;
+                const BINT* top_histogram;
+                const BINT* topleft_histogram;
+
+                if(y>0){
+                    top_histogram = this->__getHistogramAt__(x,y-1);
+                }else{
+                    top_histogram = nullhistogram;
+                }
+
+                if(x>0){
+                    left_histogram = this->__getHistogramAt__(x-1,y);
+                }else{
+                    left_histogram = nullhistogram;
+                }
+
+                if(x>0 && y>0){
+                    topleft_histogram = this->__getHistogramAt__(x-1,y-1);
+                }else{
+                    topleft_histogram = nullhistogram;
+                }
+
+                for(int n =0;n<NBBINS;n++){
+                    cur_hist[n] = ((n>=inRow[x]) + top_histogram[n] + left_histogram[n]) - topleft_histogram[n];
+                }
+            }
+        }
+    }    
     //boost::shared_ptr<IntegralHistogram<BINT,NBBINS,ISCUMMULATIVE> > sharedThis;
     boost::shared_ptr<BINT> sharedData;
-    static const bool IS_CUMMULATIVE=ISCUMMULATIVE;
+    //static const bool IS_CUMMULATIVE=ISCUMMULATIVE;
     static const int BIN_COUNT=NBBINS;
     typedef BINT BIN_TYPE;
     typedef __histogram__::__HistogramOperations__<BINT,NBBINS,ISCUMMULATIVE> HistogramOperations;
@@ -243,57 +323,10 @@ template <typename BINT,int NBBINS,bool ISCUMMULATIVE> struct IntegralHistogram{
             height(img.height),
             binLinestride(img.width*NBBINS),
             byteLinestride(img.width*NBBINS*sizeof(BINT)){
-        BINT data[NBBINS];
-        int x,y,bin;
-        t_uint8* inRow;
-        BINT* topHist;
-        //BINT* leftHist;
-        BINT* curHist;
-        inRow=img.getRow(0);
-        memset(data,0,NBBINS*sizeof(BINT));
-        for(x=0;x<width;x++){
-            data[inRow[x]]++;
-            curHist=__data__+x*NBBINS;
-            memcpy(curHist,data,sizeof(BINT)*NBBINS);
-        }
-        if(IS_CUMMULATIVE ){
-            for(y=1;y<height;y++){
-                inRow=img.getRow(y);
-                memset(data,0,NBBINS*sizeof(BINT));
-                for(x=0;x<width;x++){
-                    curHist=__data__+y*binLinestride+x*NBBINS;
-                    topHist=__data__+(y-1)*binLinestride+x*NBBINS;
-                    curHist[0]=topHist[0]+data[0];
-                    for(bin=1;bin<NBBINS;bin++){
-                        curHist[bin]=topHist[bin]+data[bin];//+data[bin-1];
-                    }
-                    //std::cerr<<"x:"<<x<<" sum:"<<sum<<"\n";
-                }
-            }
+        if(ISCUMMULATIVE){
+            this->fill_cumulative_integral_himage<t_uint8>(img);
         }else{
-            for(y=1;y<height;y++){
-                inRow=img.getRow(y);
-                memset(data,0,NBBINS*sizeof(BINT));
-                for(x=0;x<width;x++){
-                    data[inRow[x]]++;
-                    curHist=__data__+y*binLinestride+x*NBBINS;
-                    topHist=__data__+(y-1)*binLinestride+x*NBBINS;
-                    for(bin=0;bin<NBBINS;bin++){
-                        curHist[bin]=topHist[bin]+data[bin];
-                    }
-                    //std::cerr<<"x:"<<x<<" sum:"<<sum<<"\n";
-                }
-            }
-        }
-        if(IS_CUMMULATIVE){
-            int x,y;
-            for(y=0;y<height;y++){
-                for(x=0;x<width;x++){
-                    __histogram__::__count2cum__<BINT,NBBINS>(this->__getHistogramAt__(x,y));
-                    //this->__getHistogramAt__(x,y)[NBBINS-1];
-                    //std::cerr<<"y"<<y<<" x"<<x<<this->__getHistogramAt__(x,y)[255];
-                }
-            }
+            this->fill_integral_himage<t_uint8>(img);
         }
     }
     BINT* const __getHistogramAt__(int x,int y){
@@ -484,7 +517,6 @@ template <typename BINT,int NBBINS,bool ISCUMMULATIVE> struct IntegralHistogram{
                 }
             }
         }
-
 
     };
     Iterator getIterator(int radius){

@@ -49,7 +49,8 @@ class SRS():
     def l2_normalise(values: np.ndarray, e: float = .00000000000001) -> np.ndarray:
         return values/((np.sum(values ** 2, 1)**.5)+e)[:, None]
 
-    def __init__(self, n_components: int = 200, suppres_bins: List[int] = [0], pca_componet_matrix: Union[np.array, None] = None, means: Union[np.array, None] = None, stds: Union[np.array, None] = None, filename: Union[Path, str, None] = None):
+    def __init__(self, n_components: int = 200, suppres_bins: List[int] = [0], pca_componet_matrix: Union[np.array, None] = None, means: Union[np.array, None] = None, stds: Union[np.array, None] = None, filename: Union[Path, str, None] = None, standarize: bool = True):
+        self.standarise = standarize
         self.n_components = n_components
         self.suppres_bins = suppres_bins
         if pca_componet_matrix is not None:
@@ -68,11 +69,12 @@ class SRS():
 
     def train(self, histograms: np.array, n_components: int = 200):
         x = self.block_normalise(histograms)
-        x = self.std_normalise(x)
+        if self.standarise:
+            x = self.std_normalise(x)
         pca = sklearn.decomposition.PCA(n_components)
         if x.shape[0] >= n_components:
             augmented_x = x
-        elif x.shape[0] * SRS.MAX_AUGMENTATION >= n_components:    
+        elif x.shape[0] * SRS.MAX_AUGMENTATION >= n_components:
             augmented_x = x.copy()
             while augmented_x.shape[0] < n_components:
                 augmented_x = np.concatenate([augmented_x, x + np.random.rand(*x.shape) * SRS.E])
@@ -84,7 +86,8 @@ class SRS():
 
     def __call__(self, histograms: np.array) -> np.array:
         x = self.block_normalise(histograms)
-        x = self.std_normalise(x)
+        if self.standarise:
+            x = self.std_normalise(x)
         x = self.apply_pca(x)
         x = SRS.hellinger_normalise(x)
         x = SRS.l2_normalise(SRS.hellinger_normalise(x))
@@ -95,7 +98,7 @@ class SRS():
             filename = Path(filename)
         with open(filename, "wb") as f:
             np.savez(f, component_matrix=self.pca_componet_matrix, means=self.means,
-                     stds=self.stds, suppres_bins=self.suppres_bins)
+                     stds=self.stds, suppres_bins=self.suppres_bins, standarise = self.standarise)
 
     def load(self, filename: Union[Path, str]):
         if isinstance(filename, str):
@@ -106,6 +109,8 @@ class SRS():
             self.means = data["means"]
             self.stds = data["stds"]
             self.suppres_bins = data["suppres_bins"]
+            if "standarise" in data:
+                self.standarise = data["standarise"]
             self.n_components = self.pca_componet_matrix.shape[0]
 
 
