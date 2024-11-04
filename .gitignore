@@ -11,6 +11,8 @@ tmp/
 *.bkup
 *.bkup/
 
+wheelhouse/
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

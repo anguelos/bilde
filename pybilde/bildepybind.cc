@@ -149,7 +149,7 @@ py::array_t<int> lbp_features_multithreaded(py::array_t<uint8_t> img, int nb_sam
 }
 
 
-py::array_t<bilde::t_uint8> enhance_grayscale(py::array_t<bilde::t_uint8> img, int bitDepth, std::string mode, int windowWidth, int windowHeight, int globalHistogramCoeficient, int localHistogramCoeficient) {
+py::array_t<bilde::t_uint8> enhance_grayscale(py::array_t<bilde::t_uint8> img, int bitDepth, std::string mode, int windowWidth, int windowHeight, int globalHistogramCoeficient, int localHistogramCoeficient, float topQuantile, float bottomQuantile) {
     //throw std::runtime_error("not_implemented");
     // Ensure the input is a 2D array
     if (img.ndim() != 2) {
@@ -173,7 +173,7 @@ py::array_t<bilde::t_uint8> enhance_grayscale(py::array_t<bilde::t_uint8> img, i
     bilde::Buffer<bilde::t_uint8> outputBuffer(out_buf);
 
     //bilde::methods::enhance_grayscale::__GrayEnhancer__<bilde::t_uint8, 8> enhancer(mode, bitDepth, windowWidth, windowHeight, globalHistogramCoeficient, localHistogramCoeficient);
-    bilde::methods::enhance_grayscale::enhaceGray(inputBuffer, outputBuffer, bitDepth, mode, windowWidth, windowHeight, globalHistogramCoeficient, localHistogramCoeficient);
+    bilde::methods::enhance_grayscale::enhaceGray(inputBuffer, outputBuffer, bitDepth, mode, windowWidth, windowHeight, globalHistogramCoeficient, localHistogramCoeficient, topQuantile, bottomQuantile);
     //enhancer.enhaceGray(inputBuffer, outputBuffer);
     return output_img;
 }
@@ -353,7 +353,7 @@ PYBIND11_MODULE(bilde, m) {
     //    py::arg("cmp_operation")="one-tail", py::arg("cmp_threshold")="otsu", "A function that processes a 2D uint8 NumPy array");
     m.def("lbp_features", &lbp_features_multithreaded, py::arg("img"),  py::arg("nb_samples")=8, py::arg("radii")=std::vector<double>({1.,2.,3.}), py::arg("interpolation")="bilinear",
         py::arg("cmp_operation")="one-tail", py::arg("cmp_threshold")="otsu", py::arg("num_threads")=20, "A function that processes a 2D uint8 NumPy array");
-    m.def("enhance_grayscale", &enhance_grayscale, py::arg("img"),  py::arg("bitDepth")=8, py::arg("mode")="equalise", py::arg("windowWidth")=51, py::arg("windowHeight")=51, py::arg("globalHistogramCoeficient")=0, py::arg("localHistogramCoeficient")=1, "A function that doeas local histogram equlisation in order to enhance  a graylevel image");
+    m.def("enhance_grayscale", &enhance_grayscale, py::arg("img"),  py::arg("bitDepth")=8, py::arg("mode")="equalise", py::arg("windowWidth")=51, py::arg("windowHeight")=51, py::arg("globalHistogramCoeficient")=0, py::arg("localHistogramCoeficient")=1, py::arg("topQuantile")=.95, py::arg("bottomQuantile")=.05, "A function that doeas local histogram equlisation in order to enhance  a graylevel image");
     m.def("label_connected_components", &label_connected_components, py::arg("img"),  py::arg("neighborhood")=8, "A function that processes a 2D uint8 NumPy array");
     m.def("get_connected_components_and_features", &get_components_and_features, py::arg("img"),  py::arg("neighborhood")=8, "A function that returns labeled connected components and their features [label, nb_pixels, left, right, top, bottom, sum_x, sum_y, last_x, last_y]");
     m.def("lof_binarize", &lof_binarize, py::arg("img"),  py::arg("bitDepth")=8, "A binarization method based on the local otsu filter.");

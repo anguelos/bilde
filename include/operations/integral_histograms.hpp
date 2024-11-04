@@ -71,18 +71,18 @@ template <typename BINT,int NBBINS> void __count2cum__(BINT* dst,const BINT* src
     }
 }
 
-template <typename BINT,int NBBINS,bool ISCUMMULATIVE> struct __HistogramOperations__{};
+template <typename PIXELT, typename BINT,int NBBINS,bool ISCUMMULATIVE> struct __HistogramOperations__{};
 
-template <typename BINT,int NBBINS> struct __HistogramOperations__<BINT,NBBINS,true>{
+template <typename PIXELT, typename BINT,int NBBINS> struct __HistogramOperations__<PIXELT, BINT,NBBINS,true>{
     //CUMMULATIVE
-    static int __getMedian__(BINT* data){
+    static PIXELT __getMedian__(BINT* data){
         BINT half=data[NBBINS-1]/2;
         int pos=0;
         while(pos<NBBINS && data[pos]<half)pos++;
         pos-=((data[pos]*2-data[NBBINS-1])>(data[NBBINS-1]-2*data[pos-1]) );
         return pos;
     }
-    static int __getMode__(const BINT* data){
+    static PIXELT __getMode__(const BINT* data){
         int res=0;
         BINT maxFound=data[0];
         const BINT* dataMinusOne=data-1;
@@ -94,15 +94,15 @@ template <typename BINT,int NBBINS> struct __HistogramOperations__<BINT,NBBINS,t
         }
         return res;
     }
-    static int __getOtsu__(const BINT* data){
+    static PIXELT __getOtsu__(const BINT* data){
         BINT cum[NBBINS];
         __count2cum__<BINT,NBBINS>(cum,data);
-        return __HistogramOperations__<BINT,NBBINS,false>::__getOtsu__(cum);
+        return __HistogramOperations__<PIXELT,BINT,NBBINS,false>::__getOtsu__(cum);
     }
     static float __getRank__(int pos,const BINT* data ){
         return data[pos]/double(data[pos]);
     }
-    static int __getCentilePos__(float centile,const BINT* data){
+    static PIXELT __getCentilePos__(float centile,const BINT* data){
         BINT nbPixelsAtCentile=data[NBBINS-1]*centile;
         int res=0;
         while(data[res]<nbPixelsAtCentile){
@@ -114,14 +114,14 @@ template <typename BINT,int NBBINS> struct __HistogramOperations__<BINT,NBBINS,t
 };
 
 
-template <typename BINT,int NBBINS> struct __HistogramOperations__<BINT,NBBINS,false>{
+template <typename PIXELT, typename BINT,int NBBINS> struct __HistogramOperations__<PIXELT, BINT,NBBINS,false>{
     //NON CUMMULATIVE
-    static  int __getMedian__(BINT* data){
+    static  PIXELT __getMedian__(BINT* data){
         BINT cum[NBBINS];
         __count2cum__(cum,data);
-        return __HistogramOperations__<BINT,NBBINS,false>::__getMedian__(data);
+        return __HistogramOperations__<PIXELT,BINT,NBBINS,false>::__getMedian__(data);
     }
-    static int __getMode__(const BINT* data){
+    static PIXELT __getMode__(const BINT* data){
         int res=0;
         BINT maxFound=data[0];
         const BINT* dataMinusOne=data-1;
@@ -133,7 +133,7 @@ template <typename BINT,int NBBINS> struct __HistogramOperations__<BINT,NBBINS,f
         }
         return res;
     }
-    static int __getOtsu__(const BINT* data){
+    static PIXELT __getOtsu__(const BINT* data){
         int k;
         long long int total = 0; //nbPixels
         double varBetween;
@@ -166,24 +166,19 @@ template <typename BINT,int NBBINS> struct __HistogramOperations__<BINT,NBBINS,f
         return threshold;
     }
     static float __getRank__(int pos,const BINT* data ){
-        BINT sumAtPos=data[0];
-        int k=1;
-        while(k<pos){
-            sumAtPos+=data[k];
-            k++;
-        }
-        BINT totalSum=sumAtPos;
-        while(k<NBBINS){
-            totalSum+data[pos];
-        }
-        return sumAtPos/double(totalSum);
+        throw std::runtime_error("Not Implemeted");
+        return data[pos]/double(data[pos]);
     }
-    static int __getCentilePos__(float centile,const BINT* data){
-        BINT cum[NBBINS];
-        return __HistogramOperations__<BINT,NBBINS,true>::__getCentilePos__(centile,data);
+    static PIXELT __getCentilePos__(float centile,const BINT* data){
+        throw std::runtime_error("Not Implemeted");
+        BINT nbPixelsAtCentile=data[NBBINS-1]*centile;
+        int res=0;
+        while(data[res]<nbPixelsAtCentile){
+            res++;
+        }
+        res-=((res>0)*(nbPixelsAtCentile-data[res-1]<data[res]-nbPixelsAtCentile));
+        return res;
     }
-
-
 };
 
 }
@@ -205,11 +200,11 @@ template<typename T,int NBBINS,bool ISCUMMULATIVE> struct Histogram: public bild
             }
         }
     }
-    t_uint32 getOtsu(){
-        return __histogram__::__HistogramOperations__<t_uint32,NBBINS,ISCUMMULATIVE>::__getOtsu__(this->data);
+    T getOtsu(){
+        return __histogram__::__HistogramOperations__<T, t_uint32,NBBINS,ISCUMMULATIVE>::__getOtsu__(this->data);
     }
-    t_uint32 getMode(){
-        return __histogram__::__HistogramOperations__<t_uint32,NBBINS,ISCUMMULATIVE>::__getMode__(this->data);
+    T getMode(){
+        return __histogram__::__HistogramOperations__<T, t_uint32,NBBINS,ISCUMMULATIVE>::__getMode__(this->data);
     }
     friend std::ostream& operator<<(std::ostream& stream, const Histogram<T,NBBINS,ISCUMMULATIVE>& hist){
         stream<<"Histogram of "<<NBBINS<<" bins {0 => "<<hist.data;
@@ -226,10 +221,10 @@ namespace integral_histograms{
 
 
 
-template <typename BINT,int NBBINS,bool ISCUMMULATIVE> struct IntegralHistogram{
-    template<typename T>void fill_onehot_image(Buffer<T> img){
+template <typename PIXELT, typename BINT,int NBBINS,bool ISCUMMULATIVE> struct IntegralHistogram{
+    void fill_onehot_image(Buffer<PIXELT> img){
         for(t_sz y=0; y<width; y++){
-            const T* inRow=img.getConstRow(y);
+            const PIXELT* inRow=img.getConstRow(y);
             for(t_sz x=0; x<width; x++){
                 BINT* cur_hist=this->__getHistogramAt__(x,y);
                 std::memset(cur_hist, 0, sizeof(BINT)*NBBINS);
@@ -237,10 +232,10 @@ template <typename BINT,int NBBINS,bool ISCUMMULATIVE> struct IntegralHistogram{
             }
         }
     }
-    template<typename T>void fill_integral_himage(Buffer<T> img){
+    void fill_integral_himage(Buffer<PIXELT> img){
         BINT nullhistogram[NBBINS];
         for(t_sz y=0; y<width; y++){
-            const T* inRow=img.getConstRow(y);
+            const PIXELT* inRow=img.getConstRow(y);
             for(t_sz x=0; x<width; x++){
                 BINT* cur_hist=this->__getHistogramAt__(x,y);
                 const BINT* left_histogram;
@@ -269,36 +264,35 @@ template <typename BINT,int NBBINS,bool ISCUMMULATIVE> struct IntegralHistogram{
             }
         }
     }
-    template<typename T>void fill_cumulative_integral_himage(Buffer<T> img){
+    void fill_cumulative_integral_himage(Buffer<PIXELT> img){
         BINT nullhistogram[NBBINS];
         std::memset(nullhistogram, 0, sizeof(BINT)*NBBINS);
         for(t_sz y=0; y<height; y++){
-            const T* inRow=img.getConstRow(y);
+            const PIXELT* inRow=img.getConstRow(y);
             for(t_sz x=0; x<width; x++){
                 BINT* cur_hist=this->__getHistogramAt__(x,y);
                 const BINT* left_histogram;
                 const BINT* top_histogram;
                 const BINT* topleft_histogram;
-
+                std::memset(cur_hist, 0, sizeof(BINT)*NBBINS);
                 if(y>0){
-                    top_histogram = this->__getHistogramAt__(x,y-1);
+                    top_histogram = this->__getHistogramAt__(x, y-1);
                 }else{
                     top_histogram = nullhistogram;
                 }
 
                 if(x>0){
-                    left_histogram = this->__getHistogramAt__(x-1,y);
+                    left_histogram = this->__getHistogramAt__(x-1, y);
                 }else{
                     left_histogram = nullhistogram;
                 }
 
                 if(x>0 && y>0){
-                    topleft_histogram = this->__getHistogramAt__(x-1,y-1);
+                    topleft_histogram = this->__getHistogramAt__(x-1, y-1);
                 }else{
                     topleft_histogram = nullhistogram;
                 }
-
-                for(int n =0;n<NBBINS;n++){
+                for(int n =0; n < NBBINS; n++){
                     cur_hist[n] = ((n>=inRow[x]) + top_histogram[n] + left_histogram[n]) - topleft_histogram[n];
                 }
             }
@@ -308,43 +302,36 @@ template <typename BINT,int NBBINS,bool ISCUMMULATIVE> struct IntegralHistogram{
     boost::shared_ptr<BINT> sharedData;
     //static const bool IS_CUMMULATIVE=ISCUMMULATIVE;
     static const int BIN_COUNT=NBBINS;
-    typedef BINT BIN_TYPE;
-    typedef __histogram__::__HistogramOperations__<BINT,NBBINS,ISCUMMULATIVE> HistogramOperations;
+    typedef __histogram__::__HistogramOperations__<PIXELT,BINT,NBBINS,ISCUMMULATIVE> HistogramOperations;
     BINT* const __data__;
-    const int width;
-    const int height;
+    const t_sz width;
+    const t_sz height;
     const t_sint64 binLinestride;
-    const t_sint64 byteLinestride;
     
     IntegralHistogram(Buffer<t_uint8> img):
         sharedData(new BINT[img.width*img.height*NBBINS]),
             __data__((BINT*)(sharedData.get())),
             width(img.width),
             height(img.height),
-            binLinestride(img.width*NBBINS),
-            byteLinestride(img.width*NBBINS*sizeof(BINT)){
+            binLinestride(img.width*NBBINS){
         if(ISCUMMULATIVE){
-            this->fill_cumulative_integral_himage<t_uint8>(img);
+            this->fill_cumulative_integral_himage(img);
         }else{
-            this->fill_integral_himage<t_uint8>(img);
+            this->fill_integral_himage(img);
         }
     }
-    BINT* const __getHistogramAt__(int x,int y){
+    BINT* const __getHistogramAt__(int x, int y){
         x=x*(x>0);
         if(x>=width){x=width-1;}
         y=y*(y>0);
         if(y>=height){y=height-1;}
-
-        //x=x*(x>0)+(width-(x+1))*(x>width);
-        //y=y*(y>=0)+(height-(y+1))*(y>=height);
-        //std::cerr<<"y="<<y<<" x="<<x<<"\n";
-        return &(__data__[x*NBBINS+y*binLinestride]);
+        return &(__data__[x*NBBINS + y*binLinestride]);
     }
     
     struct Iterator{
-        IntegralHistogram<BINT,NBBINS,ISCUMMULATIVE> *const integralHistogram;
-        const int width;
-        const int height;
+        IntegralHistogram<PIXELT,BINT,NBBINS,ISCUMMULATIVE> *const integralHistogram;
+        const t_sz width;
+        const t_sz height;
         const t_sint64 binLinestride;
         const int left;
         const int right;
@@ -354,18 +341,23 @@ template <typename BINT,int NBBINS,bool ISCUMMULATIVE> struct IntegralHistogram{
         int  __curCol__;
         int  __curRow__;
         void __updateCurentHistogram__(){
+
             BINT* topLeftH=integralHistogram->__getHistogramAt__(__curCol__+left,__curRow__+top);
+            
+
             BINT* topRightH=integralHistogram->__getHistogramAt__(__curCol__+right,__curRow__+top);
 
             BINT* bottomLeftH=integralHistogram->__getHistogramAt__(__curCol__+left,__curRow__+bottom);
+            
             BINT* bottomRightH=integralHistogram->__getHistogramAt__(__curCol__+right,__curRow__+bottom);
 
             for(int bin=0;bin<NBBINS;bin++){
                 __curHist__[bin]=bottomRightH[bin]+topLeftH[bin]-(bottomLeftH[bin]+topRightH[bin]);
             }
+
         }
 
-        Iterator(IntegralHistogram<BINT,NBBINS,ISCUMMULATIVE>& ih,int l,int t,int r,int b):
+        Iterator(IntegralHistogram<PIXELT, BINT,NBBINS,ISCUMMULATIVE>& ih,int l,int t,int r,int b):
             integralHistogram(&ih),width(ih.width),height(ih.height),
             binLinestride(ih.binLinestride),left(l),right(r),top(t),bottom(b){
             __curCol__=0;
@@ -378,145 +370,46 @@ template <typename BINT,int NBBINS,bool ISCUMMULATIVE> struct IntegralHistogram{
             __updateCurentHistogram__();
         }
 
-        void applyLambdaFilter(Buffer<t_uint8> outImg,Buffer<t_uint8> inImg, const std::function<BINT(BINT, const BINT*)>& callback){
-            t_uint8* outRow;
-            t_uint8* inRow;
-            int x,y;
-            __curRow__=0;
-            for(y=0;y<height;y++){
-                __curRow__++;
-                outRow=outImg.getRow(y);
-                inRow=inImg.getRow(y);
-                __curCol__=0;
-                for(x=0;x<width;x++){
-                    __curCol__++;
-                    this->__updateCurentHistogram__();
-                    outRow[x]=t_uint8(callback(inRow[x], this->__curHist__));
-                }
-            }
-        }
 
-        typedef double (*t_HistogramFeatureIIntOReal)(int val,const BINT* data);
-        typedef double (*t_HistogramFeatureIVoidOReal)(const BINT* data);
-        typedef double (*t_HistogramFeatureIRealOReal)(double val,const BINT* data);
-
-        typedef int (*t_HistogramFeatureIIntOInt)(int val,const BINT* data);
-        typedef int (*t_HistogramFeatureIVoidOInt)(const BINT* data);
-        typedef int (*t_HistogramFeatureIRealOInt)(double val,const BINT* data);
-        
-        void applyFilter(Buffer<t_real64> outImg,Buffer<t_uint8> inImg,t_HistogramFeatureIIntOReal func){
-            t_real64* outRow;
-            t_uint8* inRow;
+        template <typename FilterFunc> void applyFilterFunctor(Buffer<PIXELT> outImg, FilterFunc func){
+            static_assert(std::is_invocable_r<PIXELT, FilterFunc, const BINT*>::value, "FilterFunc must be callable with (PIXELT, BINT[]) and return PIXELT.");
+            PIXELT* outRow;
             const BINT* curHist;
             int x,y;
             __curRow__=0;
-            for(y=0;y<height;y++){
-                __curRow__++;
-                outRow=outImg.getRow(y);
-                inRow=inImg.getRow(y);
-                __curCol__=0;
-                for(x=0;x<width;x++){
-                    __curCol__++;
-                    this->__updateCurentHistogram__();
-                    outRow[x]=func(inRow[x],this->curHist);
-                }
-            }
-        }
-
-        void applyFilter(Buffer<t_real64> outImg,Buffer<t_real64> inImg,t_HistogramFeatureIRealOReal func){
-            t_real64* outRow;
-            t_real64* inRow;
-            const BINT* curHist;
-            int x,y;
-            __curRow__=0;
-            for(y=0;y<height;y++){
-                __curRow__++;
-                outRow=outImg.getRow(y);
-                inRow=inImg.getRow(y);
-                __curCol__=0;
-                for(x=0;x<width;x++){
-                    __curCol__++;
-                    this->__updateCurentHistogram__();
-                    outRow[x]=func(inRow[x],this->curHist);
-                }
-            }
-        }
-
-        void applyFilter(Buffer<t_real64> outImg,t_HistogramFeatureIVoidOReal func){
-            t_real64* outRow;
-            const BINT* curHist;
-            int x,y;
-            __curRow__=0;
-            for(y=0;y<height;y++){
+            for(y=0; y < height;y++){
                 __curRow__++;
                 outRow=outImg.getRow(y);
                 __curCol__=0;
-                for(x=0;x<width;x++){
-                    __curCol__++;
-                    this->__updateCurentHistogram__();
-                    outRow[x]=func(this->curHist);
-                }
-            }
-        }
-
-        void applyFilter(Buffer<t_uint8> outImg,Buffer<t_uint8> inImg,t_HistogramFeatureIIntOInt func){
-            //std::cerr<<"Apply Filter: start\n";
-            t_uint8* outRow;
-            t_uint8* inRow;
-            //const BINT* curHist;
-            int x,y;
-            __curRow__=0;
-            for(y=0;y<height;y++){
-                __curRow__++;
-                outRow=outImg.getRow(y);
-                inRow=inImg.getRow(y);
-                __curCol__=0;
-
-                for(x=0;x<width;x++){
-                    __curCol__++;
-                    this->__updateCurentHistogram__();
-                    outRow[x]=func(inRow[x],this->__curHist__);
-                    //std::cerr<<"Apply Filter y:"<<y<<" x:"<<x<<" s:"<<double(this->__curHist__[NBBINS-1]+7)<<"\n";
-                }
-
-            }
-            //std::cerr<<"Apply Filter: end\n";
-        }
-
-        void applyFilter(Buffer<t_uint8> outImg,Buffer<t_real64> inImg,t_HistogramFeatureIRealOInt func){
-            t_uint8* outRow;
-            t_real64* inRow;
-            const BINT* curHist;
-            int x,y;
-            __curRow__=0;
-            for(y=0;y<height;y++){
-                __curRow__++;
-                outRow=outImg.getRow(y);
-                inRow=inImg.getRow(y);
-                __curCol__=0;
-                for(x=0;x<width;x++){
-                    __curCol__++;
-                    this->__updateCurentHistogram__();
-                    outRow[x]=func(inRow[x],this->curHist);
-                }
-            }
-        }
-        void applyFilter(Buffer<t_uint8> outImg,t_HistogramFeatureIVoidOInt func){
-            t_uint8* outRow;
-            //const BINT* curHist;
-            int x,y;
-            __curRow__=0;
-            for(y=0;y<height;y++){
-                __curRow__++;
-                outRow=outImg.getRow(y);
-                __curCol__=0;
-                for(x=0;x<width;x++){
+                for(x=0; x < width;x++){
                     __curCol__++;
                     this->__updateCurentHistogram__();
                     outRow[x]=func(this->__curHist__);
                 }
             }
         }
+
+        template <typename FilterFunc> void applyFilterContextualFunctor(Buffer<PIXELT> outImg, Buffer<PIXELT> inImg,FilterFunc func){
+            static_assert(std::is_invocable_r<PIXELT, FilterFunc, PIXELT, const BINT*>::value, "FilterFunc must be callable with (PIXELT, BINT[]) and return PIXELT.");
+            PIXELT* outRow;
+            PIXELT* inRow;
+            const BINT* curHist;
+            int x,y;
+            __curRow__=0;
+            for(y=0;y<height;y++){
+                __curRow__++;
+                outRow=outImg.getRow(y);
+                inRow=inImg.getRow(y);
+                __curCol__=0;
+                for(x=0;x<width;x++){
+                    __curCol__++;
+                    this->__updateCurentHistogram__();
+                    outRow[x]=func(inRow[x],this->__curHist__);
+                }
+            }
+        }
+
+
 
     };
     Iterator getIterator(int radius){

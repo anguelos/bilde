@@ -161,49 +161,38 @@ struct TextlineSegmenter{
         }
         return maxFoundPos;
     }
-    int call(Buffer<t_uint8> out, Buffer<t_uint8> in_bin){
-        std::cerr<<"CALL(1,2) 1"<<std::endl;
+
+    std::tuple<Buffer<t_label>, Buffer<t_label> , Buffer<t_label>, Buffer<t_label>, Buffer<t_uint8> > call(Buffer<t_uint8> in_bin){
+        //std::cerr<<"CALL(1,2) 1"<<std::endl;
         Buffer<t_uint8> blurred(in_bin.width, in_bin.height);
-        std::cerr<<"CALL(1,2) 2"<<std::endl;
+        //std::cerr<<"CALL(1,2) 2"<<std::endl;
         bilde::operations::integral_images::getBoxFilter<bilde::t_uint8,TextlineSegmenter::BOX_FILTER_PAD>(in_bin, blurred, this->windowWidth, this->windowHeight);
-        std::cerr<<"CALL(1,2) 3"<<std::endl;
-        return call(out, in_bin, blurred);
+        //std::cerr<<"CALL(1,2) 3"<<std::endl;
+        return call(in_bin, blurred);
     }
 
-    int call(Buffer<t_uint8> out, Buffer<t_uint8> in_bin, Buffer<t_uint8> blurred){
+    std::tuple<Buffer<t_label>, Buffer<t_label> , Buffer<t_label>, Buffer<t_label>, Buffer<t_uint8> > call(Buffer<t_uint8> in_bin, Buffer<t_uint8> blurred){
         if(verbose > 5){
             err_stream<<"Textlinesegment Loaded Image of size ("<<in_bin.width<<","<< in_bin.height<<")\n";
         }
-        std::cerr<<"CALL 1"<<std::endl;
         Buffer<t_label> CC(in_bin.width,in_bin.height);
-        //cv::Mat LLA(inImg.rows,inImg.cols,CV_32SC1);
         Buffer<t_label> LLA(in_bin.width,in_bin.height);
-
-        //cv::Mat LLC(inImg.rows,inImg.cols,CV_32SC1);
         Buffer<t_label> LLC(in_bin.width,in_bin.height);
-        //int nbComponents=bilde::operations::components::__labelConnectedComponents__<bilde::t_uint8>(CC,inImg,8);
+        Buffer<t_label> res(in_bin.width,in_bin.height);
+
         int nbComponents=bilde::operations::components::__labelConnectedComponents__<bilde::t_uint8>(CC,in_bin,8);
-        std::cerr<<"CALL 2"<<std::endl;
         int letterHeight=getLetterHeight(CC, nbComponents, minimumLetterHeight, maximumLetterHeight);
-        std::cerr<<"CALL 3"<<std::endl;
-        //cv::Mat LA(inImg.rows,inImg.cols,inImg.type());
+
         Buffer<t_uint8> LA(in_bin.width, in_bin.height);
-        //cv::Mat LC(inImg.rows,inImg.cols,inImg.type());
         Buffer<t_uint8> LC(in_bin.width, in_bin.height);
-        //cv::Mat outImg(inImg.rows,inImg.cols,inImg.type());
-        //cv::Mat blurred(inImg.rows,inImg.cols,inImg.type());
-        //blurred=boxFilter(inImg,windowWidth*compareDistance/200.0,windowHeight*compareDistance/200.0);
         
         bilde::operations::essential::__setTo__<bilde::t_uint8>(LA,255);
-        std::cerr<<"CALL 4"<<std::endl;
         bilde::operations::essential::__setTo__<bilde::t_uint8>(LC,0);
-        std::cerr<<"CALL 5"<<std::endl;
         __traceMaximaLeftToRight__(LA,blurred,letterHeight*compareDistance/100.0,tracerDencity,0);
-        std::cerr<<"CALL 6"<<std::endl;
         __traceMaximaRightToLeft__(LA,blurred,letterHeight*compareDistance/100.0,tracerDencity,0);
-        std::cerr<<"CALL 7"<<std::endl;
         __traceMinimaLeftToRight__(LC,blurred,letterHeight*compareDistance/100.0,tracerDencity,255);
-        std::cerr<<"CALL 8"<<std::endl;
+        int nbTexlines = bilde::operations::components::__labelConnectedComponents__<bilde::t_uint8>(LLA, LA, 8);
+        int nbTexlineCenters = bilde::operations::components::__labelConnectedComponents__<bilde::t_uint8>(LLC, LC, 8);
 
         if(verbose>3){
             //cv::imwrite(outFname+".la.png",LA);
@@ -213,35 +202,9 @@ struct TextlineSegmenter{
         }
         //cv::imwrite(outFname,LA);
         //std::cerr<<"height : "<<getLetterHeight(CC,nbComponents,minimumLetterHeight,maximumLetterHeight)<<"\n";
-        return 1;
+        return std::make_tuple(res, CC, LLA, LLC, blurred);
     }
-
 };
-
-
-
-/*
-cv::Mat boxFilter(Buffer<uint8_t> out, Buffer<uint8_t> in,int width,int height){
-    if(inImg.type()!=CV_8UC1){
-        std::cerr<<"error : boxFilter only works with 8bit single channel images.\n";
-        exit(1);
-    }
-    bilde::Buffer<bilde::t_uint8> inBuf(inImg);
-    bilde::Buffer<bilde::t_uint8> outBuf(outImg);
-    bilde::operations::integral_images::getBoxFilter<bilde::t_uint8,TextlineSegmenter::BOX_FILTER_PAD>(inBuf,outBuf,width,height);
-    return outImg;
-}
-*/
-
-
-
-
-
-
-
-
-
-
 
 
 

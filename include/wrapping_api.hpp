@@ -176,12 +176,24 @@ template<typename T> struct Buffer {
             memcpy(in.getRow(y),this->getRow(y),width*sizeof(T));
         }
     }
-    void copyTo(Buffer<T> in){
-        int x,y;
-        for(y=0;y<height;y++){
-            memcpy(in.getRow(y),this->getRow(y),width*sizeof(T));
+
+    void copyTo(Buffer<T> out)const {
+		//std::cerr<<"copyTo 1 ("<<width<<","<<height<<"), ("<<out.width<<", "<<out.height<<")\n";
+		std::cerr<<"copyTo 1 Me:"<<*this<<"  Out:"<<out<<"\n";
+		t_sz x,y;
+        for(t_sz y=0; y<height; y++){
+			std::cerr<<"copyTo 2 "<<y;
+			const T* inRow = this->getConstRow(y);
+			T* outRow = out.getRow(y);
+			for(x = 0; x < width; x++){
+				outRow[x] = inRow[x];
+			}
+            //memcpy(this->getRow(y), out.getRow(y), width*sizeof(T));
+			std::cerr<<";\n";
         }
+		std::cerr<<"copyTo 3\n";
     }
+
 	Buffer<T> deepCopy(){
 		Buffer<T> res(width,height);
         res.copyFrom(*this);
@@ -191,6 +203,7 @@ template<typename T> struct Buffer {
 	bool ownsMemory() const {
 		return bool(__ownedStorage__.get());
 	}
+
 	T* getRow(t_sz row) {
 		return (T*) (this->__data__ + __linestride__ * row);
 	}
@@ -219,7 +232,14 @@ template<typename T> struct Buffer {
 	}
 	~Buffer() {
 	}
+
+	friend inline std::ostream& operator<<(std::ostream& os, const Buffer<T>& buffer) {
+        os << "Buffer<" << typeid(T).name() << ">(width="<<buffer.width<<", height="<<buffer.height<<", linestride="<<buffer.__linestride__<<", data="<<((void*)buffer.__data__)<<")";
+		return os;
+    }
 };
+
+
 
 
 

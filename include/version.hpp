@@ -1,1 +1,1 @@
-#define BILDE_VERSION "0.2.1"
+#define BILDE_VERSION "0.2.2"

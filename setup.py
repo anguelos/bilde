@@ -32,6 +32,8 @@ ext_modules = [
             #"-ftree-vectorize",   # Enable vectorization
             #"-mfma",              # Fused Multiply-Add instructions
             #"-mavx",              # Enable AVX (or -mavx2 if you need AVX2)
+            "-Wfatal-errors",
+            "-std=c++17"
         ],
         extra_link_args=[],  # You can add linker options here if needed        
         language='c++',
