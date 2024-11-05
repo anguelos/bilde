@@ -45,7 +45,7 @@ ext_modules = [
 # Setup function
 setup(
     name="bilde",  # Name of your package
-    version="0.1.0",          # Version of your package
+    version=open("include/version.hpp","r").read().strip().split()[-1][1:-1],          # Version of your package
     author="Anguelos Nicolaou",       # Your name
     author_email="anguelos.nicolaou@gmail.com",  # Your email
     description="A python version of the Bilde library",  # Short description

@@ -203,8 +203,8 @@ py::array_t<bilde::t_label> label_connected_components(py::array_t<uint8_t> img,
     py::array_t<bilde::t_label> output_img = py::array_t<bilde::t_label>({rows, cols});  // creating a temporary buffer
     py::buffer_info out_buf = output_img.request();
     bilde::Buffer<bilde::t_label> outputBuffer(out_buf);
-    bilde::operations::components::__labelConnectedComponents__<bilde::t_uint8>(outputBuffer, inputBuffer, neighborhood);
-    return output_img;    
+    int nb_labels = bilde::operations::components::__labelConnectedComponents__<bilde::t_uint8>(outputBuffer, inputBuffer, neighborhood);
+    return output_img; // TODO: return the number of labels as well
 }
 
 
