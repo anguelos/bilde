@@ -13,6 +13,24 @@ Just copy it in your source tree.
 * Define algorithms once, use them directly on several back-ends.
 With a mechanism based on implicit template instantiation, an algorithm is defined as a single function, and will seemlesly run several image containers such as cv::Mat, IplImage, octave arrays, numpy arrays.
 
+## Python module
+
+### LBP feature extraction
+```python
+import pybilde
+import skimage
+img = skimage.data.coins()
+histogram = pybilde.lbp_features(img, 8, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+```
+
+### Connected compoent labeling
+```python
+import pybilde
+import skimage
+img = skimage.data.coins()
+cc_img = pybilde.label_connected_components(img>.5)
+```
+
 
 ## Demos:
 

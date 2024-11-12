@@ -52,7 +52,7 @@ setup(
     long_description=open("README.md").read(),  # Long description from the README file
     long_description_content_type="text/markdown",  # Content type for long description
     url="https://github.com/anguelos/bilde",  # URL to your project (if available)
-    packages=["pybilde"],  # Packages to include
+    packages=["pybilde", "pybilde.util"],  # Packages to include
     classifiers=[
         "Programming Language :: Python :: 3",
         "Programming Language :: C++",
