@@ -359,6 +359,177 @@ template<typename T> int __labelConnectedComponents__(Buffer<t_label> out,
 #undef as_bool
 }
 
+
+template<typename T> int __labelEqualConnectedComponents__(Buffer<t_label> out,
+		Buffer<T> in, const int neighbors_type) {
+	if (neighbors_type != 8 && neighbors_type != 4) {
+		throw "__labelConnectedComponents__ : neighborhood must be either 8 or 4";
+	}
+	t_label *out_CC = out[0]; //pointer_to_the_current_labeled_pixel
+	const int out_linestride = out[1] - out[0];
+
+	const t_label *out_NW = out[-1] - 1;
+	const t_label *out_NC = out[-1];
+	const t_label *out_NE = out[-1] + 1;
+	const t_label *out_CW = out[0] - 1;
+	const T *in_CC = in[0];
+	const T *in_NW = in[-1] - 1;
+	const T *in_NC = in[-1];
+	const T *in_NE = in[-1] + 1;
+	const T *in_CW = in[0] - 1;
+	__bwlabel__:: __FastEquivalenceSet__ equiv((out.width * out.height) / 2);
+	//int out_pixel_pos = 0;
+	int x;
+	const int width = out.width;
+	const int line_last_pixel = width-1
+	const int height = out.height;
+	int y = 0;
+	
+	t_label out_value;
+	int out_pattern, in_pattern;
+
+	if (neighbors_type == 8) {
+		// first line
+		out_CC[0] = equiv.getNewCode();
+		for (x = 1; x < width; x++) {
+			if(in_CC[x] == in_CE[x]){
+				out_CC[x] = out_CE[x];
+			}else{
+				out_CC[x] = equiv.getNewCode();
+			}
+		}
+		for(y=1; y<height; y++){
+			out_NW = out[y-1]-1;
+			out_NC = out[y-1];
+			out_NE = out[y-1]+1;
+			out_CW = out[y]-1;
+			out_CC = out[y];
+			in_CC = in[y];
+			in_NW = in[y-1]-1;
+			in_NC = in[y-1];
+			in_NE = in[y-1]+1;
+			in_CW = in[y]-1;
+			x = 0;
+
+			out_value = ((in_CC[x] == in_NC[0]) * out_NC[x]);
+			out_value += (out_value!=0) * (in_CC[x] == in_NW[0]) * out_NW[x];
+			out_value = out_value==0 ? equiv.getNewCode() : out_value;
+
+			x = 1;
+
+			while(x < width){
+				if (x < line_last_pixel){
+					in_pattern = (in_CC[x] == in_CW[x]) +  (in_CC[x] == in_NW[x]) * 2 + (in_CC[x] == in_NC[x]) * 4 + (in_CC[x] == in_NE[x]) * 8;
+					out_pattern = (out_CC[x] == out_CW[x]) + (out_CC[x] == out_NW[x]) * 2 + (out_CC[x] == out_NC[x]) * 4 + (out_CC[x] == out_NE[x]) * 8;
+				}else{
+					in_pattern = (in_CC[x] == in_CW[x]) +  (in_CC[x] == in_NW[x]) * 2 + (in_CC[x] == in_NC[x]) * 4;
+					out_pattern = (out_CC[x] == out_CW[x]) + (out_CC[x] == out_NW[x]) * 2 + (out_CC[x] == out_NC[x]) * 4;
+				}
+				switch(in_pattern){
+					case 15:
+					case 13:
+					case 11:
+					case 9:
+					case 7:
+					case 5:
+					case 3:
+					case 1:
+						out_CC[x] = out_CW[x];
+						break;
+					case 10:
+					case 6:
+					case 2:
+						out_CC[x] = out_NW[x];
+						break;
+					case 12:
+					case 4:
+						out_CC[x] = out_NC[x];
+						break;
+					case 8:
+						out_CC[x] = out_NE[x];
+						break;
+					case 0:
+						out_value = equiv.getNewCode();
+						break;
+				}
+				if(out_pattern != in_pattern){
+					if(((out_pattern & 1) && out_CC[x] != out_CW[x])){
+						equiv.setEquivalent(out_CC[x], out_CW[x]);
+					}
+					if(((out_pattern & 2) && out_CC[x] != out_NW[x])){
+						equiv.setEquivalent(out_CC[x], out_NW[x]);
+					}
+					if(((out_pattern & 4) && out_CC[x] != out_NC[x])){
+						equiv.setEquivalent(out_CC[x], out_NC[x]);
+					}
+					if(((out_pattern & 8) && out_CC[x] != out_NE[x])){
+						equiv.setEquivalent(out_CC[x], out_NE[x]);
+					}
+				}
+				x++;
+			}
+		}
+	}else{  // 4-connectivity
+		// first line
+		out_CC[0] = equiv.getNewCode();
+		for (x = 1; x < width; x++) {
+			if(in_CC[x] == in_CW[x]){
+				out_CC[x] = out_CW[x];
+			}else{
+				out_CC[x] = equiv.getNewCode();
+			}
+		}
+		for(y=1; y<height; y++){
+			out_NC = out[y-1];
+			out_CW = out[y]-1;
+			out_CC = out[y];
+			in_CC = in[y];
+			in_NC = in[y-1];
+			in_CW = in[y]-1;
+			x = 0;
+
+			out_value = ((in_CC[x] == in_NC[0]) * out_NC[x]);
+			out_value += (out_value!=0) * (in_CC[x] == in_CW[0]) * out_CW[x];
+			out_value = out_value==0 ? equiv.getNewCode() : out_value;
+
+			x = 1;
+
+			while(x < width){
+				in_pattern = (in_CC[x] == in_CW[x]) +  (in_CC[x] == in_NC[x]) * 2;
+				out_pattern = (out_CC[x] == out_CW[x]) + (out_CC[x] == out_NC[x]) * 2;
+				switch(in_pattern){
+					case 3:
+					case 1:
+						out_CC[x] = out_CW[x];
+						break;
+					case 2:
+						out_CC[x] = out_NC[x];
+						break;
+					case 0:
+						out_value = equiv.getNewCode();
+						break;
+				}
+				if(out_pattern != in_pattern){
+					equiv.setEquivalent(out_NC[x], out_CW[x]);
+				}
+				x++;
+			}
+	}
+	equiv.finalize();
+	int it, it_end;
+	t_label* out_fp = out[0];
+	for (int y = 0; y < height; y++) {
+		it = out_linestride * y;
+		it_end = it + out.width;
+		while (it < it_end) {
+			out_fp[it] = equiv[out_fp[it]];
+			it++;
+		}
+	}
+	return equiv.nbFinalLabels;
+}
+
+
 template<typename T> T __getMaxLabel__(Buffer<T> labImg) {
 	T maxFound = 0;
 	T* curRow;

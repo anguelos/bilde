@@ -344,7 +344,7 @@ textline_segment(py::array_t<bilde::t_uint8> img,int windowWidth, int windowHeig
 }
 
 
-PYBIND11_MODULE(bilde, m) {
+PYBIND11_MODULE(npbilde, m) {
     // Expose the function to Python
     m.def("__version__", &__version__, "A function that returns the version of the Bilde library taken from the version.hpp file");
     m.def("lbp_transform", &lbp_image, py::arg("img"),  py::arg("nb_samples")=8, py::arg("radius")=1., py::arg("interpolation")="bilinear",
