@@ -6,7 +6,10 @@ from setuptools import setup, Extension
 
 try:
     from torch.utils.cpp_extension import BuildExtension, CppExtension  # <-- add this
+    import torch
+    #torch_lib = os.path.join(os.path.dirname(torch.__file__), "lib")
     have_torch = True
+    torch_lib = os.path.join(os.path.dirname(torch.__file__), "lib")
 except ImportError:
     have_torch = False
     print("PyTorch not found, skipping PyTorch extension.")
@@ -28,8 +31,6 @@ np_ext = Extension(
     language="c++",
 )
 
-
-# IMPORTANT: you had `ext_modules = [...]` twice; the second overwrote the first.
 ext_modules = [np_ext]
 
 
@@ -37,9 +38,12 @@ if have_torch:
     pt_ext = CppExtension(
         "pybilde.ptbilde",
         sources=["pybilde/bilde_pybind_pt.cc"],
-    include_dirs=[pybind11.get_include(), "./include"],
-    extra_compile_args=["-Wfatal-errors", "-std=c++17"],)
+        include_dirs=[pybind11.get_include(), "./include"],
+        extra_compile_args=["-Wfatal-errors", "-std=c++17"],
+        extra_link_args=[f"-Wl,-rpath,{torch_lib}"],)
     ext_modules = ext_modules + [pt_ext]
+
+print(f"Building with PyTorch support: {have_torch}")
 
 
 # Setup function

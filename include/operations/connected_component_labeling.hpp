@@ -362,6 +362,7 @@ template<typename T> int __labelConnectedComponents__(Buffer<t_label> out,
 
 template<typename T> int __labelEqualConnectedComponents__(Buffer<t_label> out,
 		Buffer<T> in, const int neighbors_type) {
+	throw std::runtime_error("not_implemented yet");
 	if (neighbors_type != 8 && neighbors_type != 4) {
 		throw "__labelConnectedComponents__ : neighborhood must be either 8 or 4";
 	}
@@ -381,7 +382,7 @@ template<typename T> int __labelEqualConnectedComponents__(Buffer<t_label> out,
 	//int out_pixel_pos = 0;
 	int x;
 	const int width = out.width;
-	const int line_last_pixel = width-1
+	const int line_last_pixel = width-1;
 	const int height = out.height;
 	int y = 0;
 	
@@ -392,8 +393,8 @@ template<typename T> int __labelEqualConnectedComponents__(Buffer<t_label> out,
 		// first line
 		out_CC[0] = equiv.getNewCode();
 		for (x = 1; x < width; x++) {
-			if(in_CC[x] == in_CE[x]){
-				out_CC[x] = out_CE[x];
+			if(in_CC[x] == in_CW[x]){
+				out_CC[x] = out_CW[x];
 			}else{
 				out_CC[x] = equiv.getNewCode();
 			}
@@ -514,6 +515,7 @@ template<typename T> int __labelEqualConnectedComponents__(Buffer<t_label> out,
 				}
 				x++;
 			}
+		}
 	}
 	equiv.finalize();
 	int it, it_end;
@@ -666,11 +668,13 @@ template<typename T> void __getLabeledComponentFeatures__(Buffer<t_real32> out,
 	t_real32* nullComponent = out.getRow(0);
 	nullComponent[LabeledComponentsFeatures::LC_NBPIXELS_POS] = in.width
 			* in.height;
+	
 	for (y = 0; y < in.height; y++) {
 		inRow = in.getRow(y);
 		for (x = 0; x < in.width; x++) {
-			if (inRow[x]) {
+			if (inRow[x]>0) {
 				outRow = out.getRow(inRow[x]);
+				//outRow = nullComponent;
 				outRow[LabeledComponentsFeatures::LC_NBPIXELS_POS]++;
 				outRow[LabeledComponentsFeatures::LC_LEFT_POS] =
 						(outRow[LabeledComponentsFeatures::LC_LEFT_POS] < x) ?
@@ -686,7 +690,6 @@ template<typename T> void __getLabeledComponentFeatures__(Buffer<t_real32> out,
 								y;
 
 				outRow[LabeledComponentsFeatures::LC_BOTTOM_POS] = y;
-
 				outRow[LabeledComponentsFeatures::LC_SUMX_POS] += x;
 				outRow[LabeledComponentsFeatures::LC_SUMY_POS] += y;
 				outRow[LabeledComponentsFeatures::LC_LASTX_POS] = x;
@@ -828,7 +831,6 @@ template<typename T> void __drawComponent__(Buffer<T> out, Buffer<t_label> cimg,
 		}
 	}
 }
-
 
 //template<typename T> Buffer<t_label> getLabeledConnectedComponents(Buffer<T> in,
 //		int neighborhood) {

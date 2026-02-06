@@ -28,7 +28,7 @@ histogram = pybilde.lbp_features(img, 8, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 import pybilde
 import skimage
 img = skimage.data.coins()
-cc_img = pybilde.label_connected_components(img>.5)
+cc_img, nb_components = pybilde.label_connected_components(img>.5)
 ```
 
 
