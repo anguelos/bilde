@@ -1,0 +1,3 @@
+recursive-include pybilde *.cc *.cpp *.c *.h *.hpp
+recursive-include include *.h *.hpp
+include setup.py pyproject.toml README* LICENSE*

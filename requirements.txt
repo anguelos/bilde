@@ -1,1 +1,1 @@
-scikit-learn
+scikit-learn build twine numpy pybind11 torch Pillow

@@ -1,437 +1,325 @@
-// pybilde/bilde_pybind_pt.cc
-// Torch-tensor bindings for bilde, independent of NumPy.
-// C++17, CPU only. Requires pybind11 + LibTorch and your torch_pybind11_container.hpp.
-
+// bilde_pybind_torch.cc
+#include <torch/extension.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-#include <torch/extension.h>
 
-#include <stdexcept>
-#include <string>
 #include <vector>
+#include <cmath>
+#include <stdexcept>
+#include <thread>
 #include <type_traits>
 
-//#include "torch_pybind11_container.hpp"  // from your earlier header
 #include "../include/bilde.hpp"
 
-
 namespace py = pybind11;
-namespace pt = torch;
-using bilde::container::TorchImageContainer;
 
-// ========================= Shape & checks =====================================
+// ---------------------------- helpers ----------------------------
 
-struct BCHW {
-    int64_t B{1}, C{1}, H{0}, W{0};
-    int     rank{0}; // 2, 3, or 4
-};
-
-
-static inline void require_cpu(pt::Tensor const& t) {
-    if (!t.defined()) throw std::invalid_argument("Tensor is undefined.");
-    if (!t.device().is_cpu()) throw std::invalid_argument("Only CPU tensors are supported.");
+static inline void require_2d_cpu_contig(const torch::Tensor& t, const char* name) {
+    if (!t.defined()) throw std::runtime_error(std::string(name) + " must be defined");
+    if (t.device().type() != torch::kCPU) throw std::runtime_error(std::string(name) + " must be a CPU tensor");
+    if (t.dim() != 2) throw std::runtime_error(std::string(name) + " must be a 2D tensor");
+    if (!t.is_contiguous()) throw std::runtime_error(std::string(name) + " must be contiguous (C-order)");
 }
 
-
-static inline BCHW parse_bchw(pt::Tensor const& t) {
-    require_cpu(t);
-    const int d = t.dim();
-    if (d == 2) return BCHW{1, 1, t.size(0), t.size(1), 2};
-    if (d == 3) return BCHW{1, t.size(0), t.size(1), t.size(2), 3};
-    if (d == 4) return BCHW{t.size(0), t.size(1), t.size(2), t.size(3), 4};
-    throw std::invalid_argument("Expected HxW, CxHxW, or BxCxHxW.");
-}
-
-
-static inline pt::Tensor ensure_contiguous_cpu(pt::Tensor t) {
-    require_cpu(t);
-    return t.is_contiguous() ? t : t.contiguous();
-}
-
-
-static inline pt::Tensor slice_to_2d(pt::Tensor t, BCHW s, int64_t b, int64_t c) {
-    // Reduce to HxW (single channel) view, then ensure contiguous
-    if (s.rank == 4) {
-        if (s.B > 1) t = t.select(0, b);  // -> CxHxW
-        if (s.C > 1) t = t.select(0, c);  // -> HxW
-    } else if (s.rank == 3) {
-        if (s.C > 1) t = t.select(0, c);  // -> HxW
-    } // rank 2 is already HxW
-    return t.is_contiguous() ? t : t.contiguous();
-}
-
-// ========================= Dtype dispatch =====================================
-
-template <typename F>
-static inline void dispatch_dtype(pt::ScalarType st, F&& f) {
-    switch (st) {
-        case pt::kUInt8:  f.template operator()<uint8_t>();  break;
-        case pt::kInt8:   f.template operator()<int8_t>();   break;
-        case pt::kInt16:  f.template operator()<int16_t>();  break;
-        case pt::kInt32:  f.template operator()<int32_t>();  break;
-        case pt::kInt64:  f.template operator()<int64_t>();  break;
-        case pt::kFloat:  f.template operator()<float>();    break;
-        case pt::kDouble: f.template operator()<double>();   break;
-        case pt::kBool:   f.template operator()<bool>();     break;
-        default:
-            throw std::invalid_argument("Unsupported tensor dtype.");
+template <typename T>
+static inline py::buffer_info tensor_as_buffer_info(const torch::Tensor& t) {
+    static_assert(std::is_trivially_copyable_v<T>, "T must be trivially copyable");
+    if (t.scalar_type() != torch::CppTypeToScalarType<T>::value) {
+        throw std::runtime_error("Tensor has wrong dtype for requested buffer view");
     }
+
+    const auto itemsize = static_cast<ssize_t>(t.element_size());
+    const auto rows = static_cast<ssize_t>(t.size(0));
+    const auto cols = static_cast<ssize_t>(t.size(1));
+
+    // Strides are in elements in torch; py::buffer_info wants bytes.
+    const ssize_t s0 = static_cast<ssize_t>(t.stride(0)) * itemsize;
+    const ssize_t s1 = static_cast<ssize_t>(t.stride(1)) * itemsize;
+
+    return py::buffer_info(
+        t.data_ptr<T>(),
+        itemsize,
+        py::format_descriptor<T>::format(),
+        /*ndim*/ 2,
+        /*shape*/ std::vector<ssize_t>{rows, cols},
+        /*strides*/ std::vector<ssize_t>{s0, s1}
+    );
 }
 
-// ========================= Broadcasting for (B, C) ============================
+static inline std::string __get_version__() { return BILDE_VERSION; }
 
-struct BCPlan {
-    int64_t B{1}, C{1};
-    int     out_rank{2};
-};
+// ---------------------------- bindings (torch) ----------------------------
 
-static inline int max_rank(const std::vector<BCHW>& xs) {
-    int r = 2;
-    for (auto& s : xs) r = std::max(r, s.rank);
-    return r;
-}
+torch::Tensor lbp_transform_torch(
+    torch::Tensor img,
+    int nb_samples = 8,
+    double radius = 1.0,
+    std::string interpolation = "bilinear",
+    std::string cmp_operation = "one-tail",
+    std::string cmp_threshold = "otsu"
+) {
+    require_2d_cpu_contig(img, "img");
+    if (img.scalar_type() != torch::kUInt8) throw std::runtime_error("img must be torch.uint8");
 
-static inline BCPlan plan_broadcast(const std::vector<BCHW>& xs) {
-    if (xs.empty()) return {1, 1, 2};
-    BCPlan p;
-    p.out_rank = max_rank(xs);
-    // H/W equality check
-    const auto H = xs.front().H, W = xs.front().W;
-    for (auto& s : xs) {
-        if (s.H != H || s.W != W) {
-            throw std::invalid_argument("All input tensors must have the same H and W.");
-        }
+    auto rows = static_cast<int>(img.size(0));
+    auto cols = static_cast<int>(img.size(1));
+
+    if (((radius + 3) * 2 >= rows) || ((radius + 3) * 2 >= cols)) {
+        throw std::runtime_error("The radius is too big for the image size.");
     }
-    // B/C: each must be 1 or the max
-    p.B = 1; p.C = 1;
-    for (auto& s : xs) { p.B = std::max(p.B, s.B); p.C = std::max(p.C, s.C); }
-    for (auto& s : xs) {
-        if (!(s.B == 1 || s.B == p.B))
-            throw std::invalid_argument("Batch sizes (B) do not broadcast.");
-        if (!(s.C == 1 || s.C == p.C))
-            throw std::invalid_argument("Channel sizes (C) do not broadcast.");
-    }
-    return p;
-}
 
+    auto out = torch::empty({rows, cols}, torch::TensorOptions().dtype(torch::kUInt8).device(torch::kCPU));
 
-static inline pt::Tensor allocate_like_rank(pt::ScalarType dt, BCPlan p, int64_t H, int64_t W) {
-    auto opts = pt::TensorOptions().dtype(dt).device(pt::kCPU);
-    if (p.out_rank == 4) return pt::empty({p.B, p.C, H, W}, opts);
-    if (p.out_rank == 3) return pt::empty({p.C, H, W}, opts);
-    return pt::empty({H, W}, opts);
-}
+    py::buffer_info in_buf  = tensor_as_buffer_info<bilde::t_uint8>(img);
+    py::buffer_info out_buf = tensor_as_buffer_info<bilde::t_uint8>(out);
 
+    bilde::Buffer<bilde::t_uint8> inputBuffer(in_buf);
+    bilde::Buffer<bilde::t_uint8> outputBuffer(out_buf);
 
-static inline pt::Tensor out_slice_2d(pt::Tensor& out, BCPlan p, int64_t b, int64_t c) {
-    if (p.out_rank == 4) {
-        return out.select(0, (p.B == 1 ? 0 : b)).select(0, (p.C == 1 ? 0 : c)); // -> HxW
-    } else if (p.out_rank == 3) {
-        return out.select(0, (p.C == 1 ? 0 : c)); // -> HxW
-    }
-    return out; // 2D
-}
-
-// ========================= Core call helpers ==================================
-//
-// Each wrapper builds 2D Torch slices, wraps them with TorchImageContainer<T>,
-// and invokes your underlying bilde::... function which takes Buffer<T> params.
-// No NumPy conversion at any point.
-//
-
-// Unary op producing a new tensor: dst = F(src, extra...)
-template <typename Caller, typename... A>
-static pt::Tensor call_unary_new(pt::Tensor src, A... extra) {
-    src = ensure_contiguous_cpu(src);
-    auto s = parse_bchw(src);
-
-    BCPlan p = plan_broadcast({s});
-    auto dtype = src.scalar_type();
-    pt::Tensor out = allocate_like_rank(dtype, p, s.H, s.W);
-
-    dispatch_dtype(dtype, [&](auto TagT) {
-        using T = typename decltype(TagT)::type; // trick for lambda template param extraction
-    });
-
-    // Workaround to extract T cleanly without the 'Tag' dance:
-    auto runner = [&](auto* typed) {
-        using T = std::remove_pointer_t<decltype(typed)>;
-
-        const int64_t Bloop = p.B;
-        const int64_t Cloop = p.C;
-
-        for (int64_t b = 0; b < Bloop; ++b) {
-            for (int64_t c = 0; c < Cloop; ++c) {
-                pt::Tensor in2d  = slice_to_2d(src, s, b, c);
-                pt::Tensor out2d = out_slice_2d(out, p, b, c);
-                // Wrap as image containers (single-channel HxW):
-                auto in_view  = TorchImageContainer<T>::from(in2d);
-                auto out_view = TorchImageContainer<T>::from(out2d);
-                // Call your C++ op:
-                Caller::template run<T>(in_view, out_view, extra...);
-            }
-        }
-    };
-
-    switch (dtype) {
-        case pt::kUInt8:  runner((uint8_t*)nullptr);  break;
-        case pt::kInt8:   runner((int8_t*)nullptr);   break;
-        case pt::kInt16:  runner((int16_t*)nullptr);  break;
-        case pt::kInt32:  runner((int32_t*)nullptr);  break;
-        case pt::kInt64:  runner((int64_t*)nullptr);  break;
-        case pt::kFloat:  runner((float*)nullptr);    break;
-        case pt::kDouble: runner((double*)nullptr);   break;
-        case pt::kBool:   runner((bool*)nullptr);     break;
-        default: throw std::invalid_argument("Unsupported tensor dtype.");
-    }
+    auto lbp = bilde::operations::lbp::__lbp_util__::LbpIterator<bilde::t_uint8>(
+        inputBuffer, nb_samples, radius, interpolation, cmp_operation, cmp_threshold
+    );
+    lbp.applyLBPTransform(outputBuffer);
 
     return out;
 }
 
-// Unary op writing into a provided dst tensor (shape/dtype must be compatible).
-template <typename Caller, typename... A>
-static void call_unary_into(pt::Tensor src, pt::Tensor dst, A... extra) {
-    src = ensure_contiguous_cpu(src);
-    dst = ensure_contiguous_cpu(dst);
+torch::Tensor lbp_features_torch(
+    torch::Tensor img,
+    int nb_samples = 8,
+    std::vector<double> radii = {1., 2., 3.},
+    std::string interpolation = "bilinear",
+    std::string cmp_operation = "one-tail",
+    std::string cmp_threshold = "otsu",
+    int num_threads = 20
+) {
+    require_2d_cpu_contig(img, "img");
+    if (img.scalar_type() != torch::kUInt8) throw std::runtime_error("img must be torch.uint8");
+    if (nb_samples > 8 || nb_samples < 1) throw std::runtime_error("not_implemented for more than 8 samples.");
 
-    auto s  = parse_bchw(src);
-    auto sd = parse_bchw(dst);
+    py::buffer_info in_buf = tensor_as_buffer_info<bilde::t_uint8>(img);
+    const int rows = static_cast<int>(img.size(0));
+    const int cols = static_cast<int>(img.size(1));
 
-    // Require same rank/shape for output rank and H/W; broadcast B/C from src into dst
-    if (s.H != sd.H || s.W != sd.W) throw std::invalid_argument("dst H/W mismatch.");
-    BCPlan p = plan_broadcast({s, sd});
-    if (sd.rank != p.out_rank)
-        throw std::invalid_argument("dst rank mismatch (must match broadcasted rank).");
-    if (dst.scalar_type() != src.scalar_type())
-        throw std::invalid_argument("dst dtype must match src dtype.");
-
-    auto dtype = src.scalar_type();
-
-    auto runner = [&](auto* typed) {
-        using T = std::remove_pointer_t<decltype(typed)>;
-
-        const int64_t Bloop = p.B;
-        const int64_t Cloop = p.C;
-
-        for (int64_t b = 0; b < Bloop; ++b) {
-            for (int64_t c = 0; c < Cloop; ++c) {
-                pt::Tensor in2d  = slice_to_2d(src, s, b, c);
-                pt::Tensor out2d = out_slice_2d(dst, p, b, c);
-                auto in_view  = TorchImageContainer<T>::from(in2d);
-                auto out_view = TorchImageContainer<T>::from(out2d);
-                Caller::template run<T>(in_view, out_view, extra...);
-            }
+    for (double radius : radii) {
+        if (((radius + 3) * 2 >= rows) || ((radius + 3) * 2 >= cols)) {
+            throw std::runtime_error("The radius is too big for the image size.");
         }
-    };
-
-    switch (dtype) {
-        case pt::kUInt8:  runner((uint8_t*)nullptr);  break;
-        case pt::kInt8:   runner((int8_t*)nullptr);   break;
-        case pt::kInt16:  runner((int16_t*)nullptr);  break;
-        case pt::kInt32:  runner((int32_t*)nullptr);  break;
-        case pt::kInt64:  runner((int64_t*)nullptr);  break;
-        case pt::kFloat:  runner((float*)nullptr);    break;
-        case pt::kDouble: runner((double*)nullptr);   break;
-        case pt::kBool:   runner((bool*)nullptr);     break;
-        default: throw std::invalid_argument("Unsupported tensor dtype.");
     }
+
+    std::vector<std::thread> threads;
+    std::vector<std::vector<int>> indexed_results(radii.size());
+
+    int current_radius_idx = 0;
+    while (current_radius_idx < static_cast<int>(radii.size())) {
+        for (int i = 0; i < num_threads && (current_radius_idx + i) < static_cast<int>(radii.size()); i++) {
+            threads.emplace_back([&, i, current_radius_idx]() {
+                double radius = radii[current_radius_idx + i];
+                int erode = static_cast<int>(std::ceil(radius));
+
+                auto lbp = bilde::operations::lbp::__lbp_util__::LbpIterator<bilde::t_uint8>(
+                    in_buf, nb_samples, radius, interpolation, cmp_operation, cmp_threshold
+                );
+
+                // Match your numpy binding behavior: write into a chopped view.
+                bilde::Buffer<bilde::t_uint8> chopped_out_buf =
+                    bilde::Buffer<bilde::t_uint8>(in_buf, erode, erode, cols - (erode + 1), rows - (erode + 1));
+
+                lbp.applyLBPTransform(chopped_out_buf);
+                indexed_results[current_radius_idx + i] = bilde::operations::essential::getHistogram(chopped_out_buf);
+            });
+        }
+
+        for (auto& t : threads) t.join();
+        threads.clear();
+        current_radius_idx += num_threads;
+    }
+
+    std::vector<int> results;
+    results.reserve(indexed_results.size() * 256); // typical for 8-sample LBP hist, ok as a hint
+    for (auto& r : indexed_results) results.insert(results.end(), r.begin(), r.end());
+
+    auto out = torch::empty({static_cast<long>(results.size())},
+                            torch::TensorOptions().dtype(torch::kInt32).device(torch::kCPU));
+    std::memcpy(out.data_ptr<int>(), results.data(), results.size() * sizeof(int));
+    return out;
 }
 
-// Binary op producing a new tensor: dst = F(a, b, extra...)
-template <typename Caller, typename... A>
-static pt::Tensor call_binary_new(pt::Tensor a, pt::Tensor b, A... extra) {
-    a = ensure_contiguous_cpu(a);
-    b = ensure_contiguous_cpu(b);
+torch::Tensor enhance_grayscale_torch(
+    torch::Tensor img,
+    int bitDepth = 8,
+    std::string mode = "equalise",
+    int windowWidth = 51,
+    int windowHeight = 51,
+    int globalHistogramCoeficient = 0,
+    int localHistogramCoeficient = 1,
+    float topQuantile = .95f,
+    float bottomQuantile = .05f
+) {
+    require_2d_cpu_contig(img, "img");
+    if (img.scalar_type() != torch::kUInt8) throw std::runtime_error("img must be torch.uint8");
 
-    auto sa = parse_bchw(a);
-    auto sb = parse_bchw(b);
-    if (sa.H != sb.H || sa.W != sb.W)
-        throw std::invalid_argument("Inputs must have the same H and W.");
-    if (a.scalar_type() != b.scalar_type())
-        throw std::invalid_argument("Inputs must have the same dtype.");
+    const int rows = static_cast<int>(img.size(0));
+    const int cols = static_cast<int>(img.size(1));
 
-    BCPlan p = plan_broadcast({sa, sb});
-    pt::ScalarType dt = a.scalar_type();
-    pt::Tensor out = allocate_like_rank(dt, p, sa.H, sa.W);
+    auto out = torch::empty({rows, cols}, torch::TensorOptions().dtype(torch::kUInt8).device(torch::kCPU));
 
-    auto runner = [&](auto* typed) {
-        using T = std::remove_pointer_t<decltype(typed)>;
+    py::buffer_info in_buf  = tensor_as_buffer_info<bilde::t_uint8>(img);
+    py::buffer_info out_buf = tensor_as_buffer_info<bilde::t_uint8>(out);
 
-        const int64_t Bloop = p.B;
-        const int64_t Cloop = p.C;
+    bilde::Buffer<bilde::t_uint8> inputBuffer(in_buf);
+    bilde::Buffer<bilde::t_uint8> outputBuffer(out_buf);
 
-        for (int64_t bi = 0; bi < Bloop; ++bi) {
-            for (int64_t ci = 0; ci < Cloop; ++ci) {
-                pt::Tensor a2d  = slice_to_2d(a,  sa, (sa.B==1?0:bi), (sa.C==1?0:ci));
-                pt::Tensor b2d  = slice_to_2d(b,  sb, (sb.B==1?0:bi), (sb.C==1?0:ci));
-                pt::Tensor o2d  = out_slice_2d(out, p, bi, ci);
-
-                auto av = TorchImageContainer<T>::from(a2d);
-                auto bv = TorchImageContainer<T>::from(b2d);
-                auto ov = TorchImageContainer<T>::from(o2d);
-
-                Caller::template run<T>(av, bv, ov, extra...);
-            }
-        }
-    };
-
-    switch (dt) {
-        case pt::kUInt8:  runner((uint8_t*)nullptr);  break;
-        case pt::kInt8:   runner((int8_t*)nullptr);   break;
-        case pt::kInt16:  runner((int16_t*)nullptr);  break;
-        case pt::kInt32:  runner((int32_t*)nullptr);  break;
-        case pt::kInt64:  runner((int64_t*)nullptr);  break;
-        case pt::kFloat:  runner((float*)nullptr);    break;
-        case pt::kDouble: runner((double*)nullptr);   break;
-        case pt::kBool:   runner((bool*)nullptr);     break;
-        default: throw std::invalid_argument("Unsupported tensor dtype.");
-    }
+    bilde::methods::enhance_grayscale::enhaceGray(
+        inputBuffer, outputBuffer,
+        bitDepth, mode,
+        windowWidth, windowHeight,
+        globalHistogramCoeficient, localHistogramCoeficient,
+        topQuantile, bottomQuantile
+    );
 
     return out;
 }
 
-// Unary op returning a tuple of K tensors: (o0, o1, ... oK-1) = F(src, extra...)
-template <size_t K, typename Caller, typename... A>
-static auto call_unary_multi_new(pt::Tensor src, A... extra) {
-    src = ensure_contiguous_cpu(src);
-    auto s = parse_bchw(src);
-    BCPlan p = plan_broadcast({s});
-    pt::ScalarType dt = src.scalar_type();
+std::pair<torch::Tensor, int> label_connected_components_torch(torch::Tensor img, int neighborhood = 8) {
+    require_2d_cpu_contig(img, "img");
+    if (img.scalar_type() != torch::kUInt8) throw std::runtime_error("img must be torch.uint8");
+    if (neighborhood != 4 && neighborhood != 8) throw std::runtime_error("not_implemented for other than 4 or 8 neighborhoods.");
 
-    std::array<pt::Tensor, K> outs;
-    for (size_t i = 0; i < K; ++i) outs[i] = allocate_like_rank(dt, p, s.H, s.W);
+    const int rows = static_cast<int>(img.size(0));
+    const int cols = static_cast<int>(img.size(1));
 
-    auto runner = [&](auto* typed) {
-        using T = std::remove_pointer_t<decltype(typed)>;
+    // Use int32 for labels unless your bilde::t_label differs.
+    auto labels = torch::empty({rows, cols},
+                               torch::TensorOptions().dtype(torch::kInt32).device(torch::kCPU));
 
-        const int64_t Bloop = p.B;
-        const int64_t Cloop = p.C;
+    py::buffer_info in_buf    = tensor_as_buffer_info<bilde::t_uint8>(img);
+    py::buffer_info label_buf = tensor_as_buffer_info<bilde::t_label>(labels);
 
-        for (int64_t b = 0; b < Bloop; ++b) {
-            for (int64_t c = 0; c < Cloop; ++c) {
-                pt::Tensor in2d = slice_to_2d(src, s, b, c);
-                auto in_view = TorchImageContainer<T>::from(in2d);
+    bilde::Buffer<bilde::t_uint8> inputBuffer(in_buf);
+    bilde::Buffer<bilde::t_label> outputBuffer(label_buf);
 
-                std::array<TorchImageContainer<T>, K> out_views;
-                for (size_t i = 0; i < K; ++i) {
-                    pt::Tensor o2d = out_slice_2d(outs[i], p, b, c);
-                    out_views[i] = TorchImageContainer<T>::from(o2d);
-                }
+    int nb_labels = bilde::operations::components::__labelConnectedComponents__<bilde::t_uint8>(
+        outputBuffer, inputBuffer, neighborhood
+    );
 
-                Caller::template run<T>(in_view, out_views, extra...);
-            }
-        }
-    };
-
-    switch (dt) {
-        case pt::kUInt8:  runner((uint8_t*)nullptr);  break;
-        case pt::kInt8:   runner((int8_t*)nullptr);   break;
-        case pt::kInt16:  runner((int16_t*)nullptr);  break;
-        case pt::kInt32:  runner((int32_t*)nullptr);  break;
-        case pt::kInt64:  runner((int64_t*)nullptr);  break;
-        case pt::kFloat:  runner((float*)nullptr);    break;
-        case pt::kDouble: runner((double*)nullptr);   break;
-        case pt::kBool:   runner((bool*)nullptr);     break;
-        default: throw std::invalid_argument("Unsupported tensor dtype.");
-    }
-
-    // Convert to Python tuple
-    py::tuple tup(K);
-    for (size_t i = 0; i < K; ++i) tup[i] = outs[i];
-    return tup;
+    return {labels, nb_labels};
 }
 
-// ========================= Registration helpers ===============================
-//
-// Define tiny "Caller" structs for each bilde function you want to expose.
-// Each must provide: template<typename T> static void run(...)
-// with Buffer<T>-compatible parameter types (via TorchImageContainer<T>).
-//
-// Examples shown below use hypothetical signatures; adapt to yours.
-//
+std::pair<torch::Tensor, int> label_connected_components_equal_torch(torch::Tensor img, int neighborhood = 8) {
+    require_2d_cpu_contig(img, "img");
+    if (img.scalar_type() != torch::kUInt8) throw std::runtime_error("img must be torch.uint8");
+    if (neighborhood != 4 && neighborhood != 8) throw std::runtime_error("not_implemented for other than 4 or 8 neighborhoods.");
 
-// Example unary: dst = bilde::gaussian(src, sigma)
-struct CallGaussian {
-    template <typename T, typename BufIn, typename BufOut>
-    static inline void invoke(BufIn const& in, BufOut& out, double sigma) {
-        // Replace with your real call:
-        // bilde::gaussian(in, out, sigma);
-        (void)in; (void)out; (void)sigma;
-        throw std::logic_error("CallGaussian not wired — replace with your bilde:: function.");
-    }
+    const int rows = static_cast<int>(img.size(0));
+    const int cols = static_cast<int>(img.size(1));
 
-    template <typename T>
-    static inline void run(const TorchImageContainer<T>& in,
-                           TorchImageContainer<T>& out,
-                           double sigma) {
-        invoke<T>(in, out, sigma);
-    }
-};
+    auto labels = torch::empty({rows, cols},
+                               torch::TensorOptions().dtype(torch::kInt32).device(torch::kCPU));
 
-// Example binary: dst = bilde::add(a, b)
-struct CallAdd {
-    template <typename T, typename BufA, typename BufB, typename BufOut>
-    static inline void invoke(BufA const& a, BufB const& b, BufOut& out) {
-        // bilde::add(a, b, out);
-        (void)a; (void)b; (void)out;
-        throw std::logic_error("CallAdd not wired — replace with your bilde:: function.");
-    }
+    py::buffer_info in_buf    = tensor_as_buffer_info<bilde::t_uint8>(img);
+    py::buffer_info label_buf = tensor_as_buffer_info<bilde::t_label>(labels);
 
-    template <typename T>
-    static inline void run(const TorchImageContainer<T>& a,
-                           const TorchImageContainer<T>& b,
-                           TorchImageContainer<T>& out) {
-        invoke<T>(a, b, out);
-    }
-};
+    bilde::Buffer<bilde::t_uint8> inputBuffer(in_buf);
+    bilde::Buffer<bilde::t_label> outputBuffer(label_buf);
 
-// ========================= pybind module ======================================
+    int nb_labels = bilde::operations::components::__labelEqualConnectedComponents__<bilde::t_uint8>(
+        outputBuffer, inputBuffer, neighborhood
+    );
 
+    return {labels, nb_labels};
+}
+
+std::tuple<torch::Tensor, torch::Tensor, std::vector<std::string>>
+get_connected_components_and_features_torch(torch::Tensor img, int neighborhood = 8) {
+    require_2d_cpu_contig(img, "img");
+    if (img.scalar_type() != torch::kUInt8) throw std::runtime_error("img must be torch.uint8");
+    if (neighborhood != 4 && neighborhood != 8) throw std::runtime_error("not_implemented for other than 4 or 8 neighborhoods.");
+
+    const int rows = static_cast<int>(img.size(0));
+    const int cols = static_cast<int>(img.size(1));
+
+    static_assert(sizeof(bilde::t_real32) == 4, "t_real32 must be 4 bytes");
+
+    auto labels = torch::empty({rows, cols},
+                               torch::TensorOptions().dtype(torch::kInt32).device(torch::kCPU));
+
+    py::buffer_info in_buf    = tensor_as_buffer_info<bilde::t_uint8>(img);
+    py::buffer_info label_buf = tensor_as_buffer_info<bilde::t_label>(labels);
+
+    bilde::Buffer<bilde::t_uint8> inputBuffer(in_buf);
+    bilde::Buffer<bilde::t_label> labelBuffer(label_buf);
+
+    int nb_components = bilde::operations::components::__labelConnectedComponents__<bilde::t_uint8>(
+        labelBuffer, inputBuffer, neighborhood
+    );
+
+    auto feats = torch::empty({nb_components, 10},
+                              torch::TensorOptions().dtype(torch::kFloat32).device(torch::kCPU));
+
+    py::buffer_info feats_buf = tensor_as_buffer_info<bilde::t_real32>(feats);
+    bilde::Buffer<bilde::t_real32> outputFeaturesBuffer(feats_buf);
+
+    bilde::operations::components::__getLabeledComponentFeatures__(outputFeaturesBuffer, labelBuffer);
+
+    std::vector<std::string> feature_names = {
+        "label", "nb_pixels", "left", "right", "top", "bottom", "sum_x", "sum_y", "last_x", "last_y"
+    };
+
+    return {labels, feats, feature_names};
+}
+
+// ---------------------------- module ----------------------------
+
+// Use TORCH_EXTENSION_NAME so this compiles cleanly via torch.utils.cpp_extension.load / load_inline.
+//PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 PYBIND11_MODULE(ptbilde, m) {
-    py::module_::import("torch"); // This does not work , torch must be manually imported in python before ptbilde
-    m.doc() = "bilde PyTorch bindings (BxCxHxW/CxHxW/HxW, CPU, contiguous). "
-              "Loops over (B,C) and dispatches dtype; no NumPy involved.";
-    m.def("__version__", []() { return std::string(BILDE_VERSION); },
-          "bilde version string");
-    m.def("label_connected_components", [](pt::Tensor img, int neighborhood) {
-        // Example of a multi-output unary call:
-        return call_unary_multi_new<5, bilde::operations::components::__labelConnectedComponents__<bilde::t_uint8>(img, neighborhood);
-    }, py::arg("img"), py::arg("neighborhood")=8,
-       "Label connected components in a binary image. "
-       "Returns tuple of 5 tensors: (labeled_image, component_count, leftmost_labels, rightmost_labels, bottommost_labels). "
-       "Input image must be 2D uint8 (0=background, nonzero=foreground). "
-       "neighborhood: 4 or 8.");
-    // ---- Example bindings (replace with your real ops) -----------------------
-    //
-    // 1) Unary, returns new tensor
-    // m.def("gaussian",
-    //       [](pt::Tensor src, double sigma) {
-    //           return call_unary_new<CallGaussian>(src, sigma);
-    //       },
-    //       py::arg("src"), py::arg("sigma"),
-    //       "Gaussian blur: out = gaussian(src, sigma)");
-    //
-    // 2) Unary, writes into provided dst (shape/dtype checked)
-    // m.def("gaussian_into",
-    //       [](pt::Tensor src, pt::Tensor dst, double sigma) {
-    //           call_unary_into<CallGaussian>(src, dst, sigma);
-    //       },
-    //       py::arg("src"), py::arg("dst"), py::arg("sigma"),
-    //       "Gaussian blur into preallocated dst.");
-    //
-    // 3) Binary, returns new tensor
-    // m.def("add",
-    //       [](pt::Tensor a, pt::Tensor b) {
-    //           return call_binary_new<CallAdd>(a, b);
-    //       },
-    //       py::arg("a"), py::arg("b"),
-    //       "Elementwise add: out = a + b");
-    //
-    // -------------------------------------------------------------------------
+    m.def("__get_version__", &__get_version__, "Return Bilde version string");
 
-    // Tip: replicate your np bindings’ function list here by defining small
-    // Call* structs that call the corresponding bilde:: functions. Because
-    // TorchImageContainer<T> implicitly converts to bilde::Buffer<T>, you
-    // don’t need any NumPy conversion at all.
+    m.def("lbp_transform", &lbp_transform_torch,
+          py::arg("img"),
+          py::arg("nb_samples") = 8,
+          py::arg("radius") = 1.0,
+          py::arg("interpolation") = "bilinear",
+          py::arg("cmp_operation") = "one-tail",
+          py::arg("cmp_threshold") = "otsu",
+          "LBP transform for a 2D uint8 CPU contiguous torch.Tensor");
+
+    m.def("lbp_features", &lbp_features_torch,
+          py::arg("img"),
+          py::arg("nb_samples") = 8,
+          py::arg("radii") = std::vector<double>({1., 2., 3.}),
+          py::arg("interpolation") = "bilinear",
+          py::arg("cmp_operation") = "one-tail",
+          py::arg("cmp_threshold") = "otsu",
+          py::arg("num_threads") = 20,
+          "LBP hist features for a 2D uint8 CPU contiguous torch.Tensor");
+
+    m.def("enhance_grayscale", &enhance_grayscale_torch,
+          py::arg("img"),
+          py::arg("bitDepth") = 8,
+          py::arg("mode") = "equalise",
+          py::arg("windowWidth") = 51,
+          py::arg("windowHeight") = 51,
+          py::arg("globalHistogramCoeficient") = 0,
+          py::arg("localHistogramCoeficient") = 1,
+          py::arg("topQuantile") = .95f,
+          py::arg("bottomQuantile") = .05f,
+          "Local histogram equalisation for 2D uint8 CPU contiguous torch.Tensor");
+
+    m.def("label_connected_components", &label_connected_components_torch,
+          py::arg("img"),
+          py::arg("neighborhood") = 8,
+          "Connected components labeling for 2D uint8 CPU contiguous torch.Tensor");
+
+    m.def("label_connected_components_equal", &label_connected_components_equal_torch,
+          py::arg("img"),
+          py::arg("neighborhood") = 8,
+          "Equal-value connected components labeling for 2D uint8 CPU contiguous torch.Tensor");
+
+    m.def("get_connected_components_and_features", &get_connected_components_and_features_torch,
+          py::arg("img"),
+          py::arg("neighborhood") = 8,
+          "Return (labels:int32 [H,W], features:float32 [N,10], feature_names:list[str])");
 }
-

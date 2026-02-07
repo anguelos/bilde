@@ -1,5 +1,6 @@
 # setup.py
 import os, re
+import sys
 import pybind11
 from setuptools import setup, Extension
 
@@ -40,7 +41,8 @@ if have_torch:
         sources=["pybilde/bilde_pybind_pt.cc"],
         include_dirs=[pybind11.get_include(), "./include"],
         extra_compile_args=["-Wfatal-errors", "-std=c++17"],
-        extra_link_args=[f"-Wl,-rpath,{torch_lib}"],)
+#        extra_link_args=[f"-Wl,-rpath,{torch_lib}"],)
+        extra_link_args=["-Wl,-rpath,$ORIGIN/../torch/lib"],)
     ext_modules = ext_modules + [pt_ext]
 
 print(f"Building with PyTorch support: {have_torch}")
@@ -58,14 +60,14 @@ setup(
     url="https://github.com/anguelos/bilde",  # URL to your project (if available)
     packages=["pybilde", "pybilde.util"],  # Packages to include
     classifiers=[
-        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.11",
         "Programming Language :: C++",
         "License :: OSI Approved :: MIT License",  # Update to your license
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.6',  # Specify required Python version
+    python_requires='>=3.11',  # Specify required Python version
     install_requires=[
-        "numpy",  # List your package dependencies
+        "numpy", "scikit-learn", "Pillow", "pybind11" # List your package dependencies
     ],
     ext_modules=ext_modules,  # Extension modules to build
 )
