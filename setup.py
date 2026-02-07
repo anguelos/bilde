@@ -1,51 +1,57 @@
-#from setuptools import setup, Extension
+# setup.py
+import os, re
+import sys
 import pybind11
-import os
-import re
 from setuptools import setup, Extension
 
-from setuptools import setup, Extension
-import pybind11
+
+try:
+    from torch.utils.cpp_extension import BuildExtension, CppExtension  # <-- add this
+    import torch
+    #torch_lib = os.path.join(os.path.dirname(torch.__file__), "lib")
+    have_torch = True
+    torch_lib = os.path.join(os.path.dirname(torch.__file__), "lib")
+except ImportError:
+    have_torch = False
+    print("PyTorch not found, skipping PyTorch extension.")
 
 
 def get_version():
-    version_file = os.path.join('include', 'version.hpp')
-    with open(version_file, 'r', encoding="utf-8") as f:
-        content = f.read()
-    # Regular expression to find the version number
-    version_match = re.search(r'#define\s+BILDE_VERSION\s+"(.*)"', content)
-    if version_match:
-        return version_match.group(1)
-    raise RuntimeError("Unable to find version string.")
+    with open(os.path.join("include", "version.hpp"), encoding="utf-8") as f:
+        m = re.search(r'#define\s+BILDE_VERSION\s+"(.*)"', f.read())
+    if not m:
+        raise RuntimeError("Unable to find version string.")
+    return m.group(1)
+
+# --- numpy binding as before (ok with plain Extension)
+np_ext = Extension(
+    "pybilde.npbilde",
+    sources=["pybilde/bilde_pybind_np.cc"],
+    include_dirs=[pybind11.get_include(), "./include"],
+    extra_compile_args=["-Wfatal-errors", "-std=c++17"],
+    language="c++",
+)
+
+ext_modules = [np_ext]
 
 
-ext_modules = [
-    Extension(
-        'pybilde.bilde',  # Name of the generated Python module
-        sources=['pybilde/bildepybind.cc'],  # Path to your C++ source file
-        include_dirs=[pybind11.get_include(), "./include"],  # Include pybind11 headers
-        extra_compile_args=[
-            #"-O3",               # Maximum optimization level
-            #"-march=native",      # Optimize for the host machine’s architecture
-            #"-funroll-loops",     # Unroll loops for optimization
-            #"-ffast-math",        # Fast floating-point optimizations
-            #"-ftree-vectorize",   # Enable vectorization
-            #"-mfma",              # Fused Multiply-Add instructions
-            #"-mavx",              # Enable AVX (or -mavx2 if you need AVX2)
-            "-Wfatal-errors",
-            "-std=c++17"
-        ],
-        extra_link_args=[],  # You can add linker options here if needed        
-        language='c++',
-    ),
-]
+if have_torch:
+    pt_ext = CppExtension(
+        "pybilde.ptbilde",
+        sources=["pybilde/bilde_pybind_pt.cc"],
+        include_dirs=[pybind11.get_include(), "./include"],
+        extra_compile_args=["-Wfatal-errors", "-std=c++17"],
+#        extra_link_args=[f"-Wl,-rpath,{torch_lib}"],)
+        extra_link_args=["-Wl,-rpath,$ORIGIN/../torch/lib"],)
+    ext_modules = ext_modules + [pt_ext]
 
+print(f"Building with PyTorch support: {have_torch}")
 
 
 # Setup function
 setup(
     name="bilde",  # Name of your package
-    version=open("include/version.hpp","r").read().strip().split()[-1][1:-1],          # Version of your package
+    version=get_version(),          # Version of your package
     author="Anguelos Nicolaou",       # Your name
     author_email="anguelos.nicolaou@gmail.com",  # Your email
     description="A python version of the Bilde library",  # Short description
@@ -54,14 +60,14 @@ setup(
     url="https://github.com/anguelos/bilde",  # URL to your project (if available)
     packages=["pybilde", "pybilde.util"],  # Packages to include
     classifiers=[
-        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.11",
         "Programming Language :: C++",
         "License :: OSI Approved :: MIT License",  # Update to your license
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.6',  # Specify required Python version
+    python_requires='>=3.11',  # Specify required Python version
     install_requires=[
-        "numpy",  # List your package dependencies
+        "numpy", "scikit-learn", "Pillow", "pybind11" # List your package dependencies
     ],
     ext_modules=ext_modules,  # Extension modules to build
 )

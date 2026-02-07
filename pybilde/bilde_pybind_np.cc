@@ -11,7 +11,7 @@
 namespace py = pybind11;
 
 
-std::string __version__(){
+std::string __get_version__(){
     return BILDE_VERSION;
 }
 
@@ -179,7 +179,8 @@ py::array_t<bilde::t_uint8> enhance_grayscale(py::array_t<bilde::t_uint8> img, i
 }
 
 
-py::array_t<bilde::t_label> label_connected_components(py::array_t<uint8_t> img, int neighborhood) {
+//py::array_t<bilde::t_label> label_connected_components(py::array_t<uint8_t> img, int neighborhood) {
+std::pair<py::array_t<bilde::t_label>, int> label_connected_components(py::array_t<uint8_t> img, int neighborhood) {
     // Ensure the input is a 2D array
     if (img.ndim() != 2) {
         throw std::runtime_error("Input image must be a 2D array");
@@ -204,12 +205,11 @@ py::array_t<bilde::t_label> label_connected_components(py::array_t<uint8_t> img,
     py::buffer_info out_buf = output_img.request();
     bilde::Buffer<bilde::t_label> outputBuffer(out_buf);
     int nb_labels = bilde::operations::components::__labelConnectedComponents__<bilde::t_uint8>(outputBuffer, inputBuffer, neighborhood);
-    return output_img; // TODO: return the number of labels as well
+    return std::make_pair(output_img, nb_labels);
 }
 
 
-std::pair<py::array_t<bilde::t_label>, py::array_t<bilde::t_real32>> get_components_and_features(py::array_t<uint8_t> img, int neighborhood){
-    throw std::runtime_error("not_implemented");
+std::pair<py::array_t<bilde::t_label>, int> label_connected_components_equal(py::array_t<uint8_t> img, int neighborhood) {
     // Ensure the input is a 2D array
     if (img.ndim() != 2) {
         throw std::runtime_error("Input image must be a 2D array");
@@ -230,18 +230,56 @@ std::pair<py::array_t<bilde::t_label>, py::array_t<bilde::t_real32>> get_compone
     int rows = in_buf.shape[0];
     int cols = in_buf.shape[1];
     
+    py::array_t<bilde::t_label> output_img = py::array_t<bilde::t_label>({rows, cols});  // creating a temporary buffer
+    py::buffer_info out_buf = output_img.request();
+    bilde::Buffer<bilde::t_label> outputBuffer(out_buf);
+    int nb_labels = bilde::operations::components::__labelEqualConnectedComponents__<bilde::t_uint8>(outputBuffer, inputBuffer, neighborhood);
+    return std::make_pair(output_img, nb_labels);
+}
+
+
+
+
+std::tuple<py::array_t<bilde::t_label>, py::array_t<bilde::t_real32>, std::vector<std::string>> get_components_and_features(py::array_t<uint8_t> img, int neighborhood){
+    if (img.ndim() != 2) {
+        throw std::runtime_error("Input image must be a 2D array");
+    }
+
+    // Ensure the input array is of type uint8
+    if (img.dtype().kind() != 'u' || img.dtype().itemsize() != 1) {
+        throw std::runtime_error("Input image must be of type uint8");
+    }
+    if (neighborhood != 4 && neighborhood != 8){
+        throw std::runtime_error("not_implemented for other than 4 or 8 neighborhoods.");
+    }
+
+    auto info = img.request();
+    if (info.strides[1] != (ssize_t)info.itemsize || info.strides[0] != (ssize_t)(info.shape[1] * info.itemsize))
+        throw std::runtime_error("img must be C-contiguous");
+
+    static_assert(sizeof(bilde::t_real32) == 4, "t_real32 must be 4 bytes");
+    static_assert(std::is_trivially_copyable_v<bilde::t_label>);
+    static_assert(std::is_trivially_copyable_v<bilde::t_real32>);
+
+
+    py::buffer_info in_buf = img.request();
+    bilde::Buffer<bilde::t_uint8> inputBuffer(in_buf);
+
+    int rows = in_buf.shape[0];
+    int cols = in_buf.shape[1];
+
     py::array_t<bilde::t_label> label_img = py::array_t<bilde::t_label>({rows, cols});  // creating a temporary buffer
     py::buffer_info label_buf = label_img.request();
     bilde::Buffer<bilde::t_label> labelBuffer(label_buf);
     int nb_components = bilde::operations::components::__labelConnectedComponents__<bilde::t_uint8>(labelBuffer, inputBuffer, neighborhood);
-    
-    py::array_t<bilde::t_real32> output_array = py::array_t<bilde::t_real32>({10, nb_components});  // creating a temporary buffer
+
+    py::array_t<bilde::t_real32> output_array = py::array_t<bilde::t_real32>({nb_components, 10});  // creating a temporary buffer
     py::buffer_info out_features_buf = output_array.request();
     bilde::Buffer<bilde::t_real32> outputFeaturesBuffer(out_features_buf);
-    bilde::operations::components::__getLabeledComponentFeatures__(outputFeaturesBuffer, labelBuffer);
 
-    //label, nb_pixels, left, right, top, bottom, sum_x, sum_y, last_x, last_y
-    return std::pair(label_img, output_array);
+    bilde::operations::components::__getLabeledComponentFeatures__(outputFeaturesBuffer, labelBuffer);
+    std::vector<std::string> feature_names = {"label", "nb_pixels", "left", "right", "top", "bottom", "sum_x", "sum_y", "last_x", "last_y"};
+    return std::make_tuple(label_img, output_array, feature_names);
 }
 
 
@@ -344,9 +382,9 @@ textline_segment(py::array_t<bilde::t_uint8> img,int windowWidth, int windowHeig
 }
 
 
-PYBIND11_MODULE(bilde, m) {
+PYBIND11_MODULE(npbilde, m) {
     // Expose the function to Python
-    m.def("__version__", &__version__, "A function that returns the version of the Bilde library taken from the version.hpp file");
+    m.def("__get_version__", &__get_version__, "A function that returns the version of the Bilde library taken from the version.hpp file");
     m.def("lbp_transform", &lbp_image, py::arg("img"),  py::arg("nb_samples")=8, py::arg("radius")=1., py::arg("interpolation")="bilinear",
         py::arg("cmp_operation")="one-tail", py::arg("cmp_threshold")="otsu", "A function that creates an LBP image out of a Graylevel (uint8) ");
     //m.def("lbp_features", &lbp_features, py::arg("img"),  py::arg("nb_samples")=8, py::arg("radii")=std::vector<double>({1.,2.,3.}), py::arg("interpolation")="bilinear",
@@ -354,7 +392,8 @@ PYBIND11_MODULE(bilde, m) {
     m.def("lbp_features", &lbp_features_multithreaded, py::arg("img"),  py::arg("nb_samples")=8, py::arg("radii")=std::vector<double>({1.,2.,3.}), py::arg("interpolation")="bilinear",
         py::arg("cmp_operation")="one-tail", py::arg("cmp_threshold")="otsu", py::arg("num_threads")=20, "A function that processes a 2D uint8 NumPy array");
     m.def("enhance_grayscale", &enhance_grayscale, py::arg("img"),  py::arg("bitDepth")=8, py::arg("mode")="equalise", py::arg("windowWidth")=51, py::arg("windowHeight")=51, py::arg("globalHistogramCoeficient")=0, py::arg("localHistogramCoeficient")=1, py::arg("topQuantile")=.95, py::arg("bottomQuantile")=.05, "A function that doeas local histogram equlisation in order to enhance  a graylevel image");
-    m.def("label_connected_components", &label_connected_components, py::arg("img"),  py::arg("neighborhood")=8, "A function that processes a 2D uint8 NumPy array");
+    m.def("label_connected_components", &label_connected_components, py::arg("img"),  py::arg("neighborhood")=8, "A function that labeles the connected components of a 2D uint8 NumPy array");
+    m.def("label_connected_components_equal", &label_connected_components_equal, py::arg("img"),  py::arg("neighborhood")=8, "A function that processes a 2D uint8 NumPy array");
     m.def("get_connected_components_and_features", &get_components_and_features, py::arg("img"),  py::arg("neighborhood")=8, "A function that returns labeled connected components and their features [label, nb_pixels, left, right, top, bottom, sum_x, sum_y, last_x, last_y]");
     m.def("lof_binarize", &lof_binarize, py::arg("img"),  py::arg("bitDepth")=8, "A binarization method based on the local otsu filter.");
     m.def("textline_segment", &textline_segment, py::arg("img"),  py::arg("windowWidth")=51, py::arg("windowHeight")=51, py::arg("tracerDencity")=1, py::arg("compareDistance")=50, py::arg("minimumLetterHeight")=10, py::arg("maximumLetterHeight")=500, "A function that processes a 2D uint8 NumPy array");

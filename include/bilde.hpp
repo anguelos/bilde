@@ -23,17 +23,26 @@
 
 #include "containers/buffer_container.hpp"
 
+
 #ifdef CV_VERSION
 #include "containers/iplimage_container.hpp"
 #endif
+
 
 #ifdef CV_MAJOR_VERSION
 #include "containers/cvmat_container.hpp"
 #endif
 
+
 #ifdef PYBIND11_VERSION_MAJOR
 #include "containers/nppybind11_container.hpp"
 #endif
+
+
+#if __has_include(<torch/extension.h>)
+#include "containers/ptpybind11_container.hpp"
+#endif
+
 
 #ifdef HAVE_OCTAVE
 #include "containers/octave_container.hpp"
@@ -41,11 +50,11 @@
 #endif
 
 
-
 // IO Libraries
 #ifdef PNG_LIBPNG_VER
 #include "io/libpng.hpp"
 #endif
+ 
 
 #ifdef TIFF_VERSION
 #include "io/libtiff.hpp"
@@ -69,8 +78,6 @@
 #include "methods/page_segmation.hpp"
 #include "methods/binarization.hpp"
 #include "methods/enhance_grayscale.hpp"
-
-
 
 
 #include "util/knn.hpp"

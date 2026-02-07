@@ -3,7 +3,7 @@ import sklearn.decomposition
 import numpy as np
 import sys
 from PIL import Image
-from ..bilde import lbp_features
+from ..npbilde import lbp_features
 from typing import Tuple, Union, List
 
 

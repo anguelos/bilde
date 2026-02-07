@@ -1,6 +1,46 @@
 # bilde
-
 ## (B)uffer (I)maging (L)ibrary, (D)irty and (E)xtendable
+
+## Python extention (pybilde)
+
+### Use in python:
+
+#### Label Connected Components of a torch tensor
+```python
+import pybilde
+import torch
+from matplotlib import pyplot as plt
+bw_img = (torch.rand(1000, 1000) > .8).to(torch.uint8)
+l_img, n_components = pybilde.label_connected_components(bw_img)
+plt.imshow(l_img, cmap='nipy_spectral'))
+plt.show()
+```
+
+
+### Install from sdist
+* You will need a C++17 compiler
+* Probably a Unix environment (eg ubuntu 24.04)
+* If pytorch is installed in the current enironment, the module will build the ptbilde submodule otherwise, only the numpy submodule (npbilde) will be built.
+```bash
+pip install bilde
+```
+
+### Building binaries:
+* Install build dependencies
+```bash
+pip install cibuildwheel
+```
+
+* Build bdist without a CI
+```bash
+CIBW_BUILD="cp313t-manylinux_x86_64 cp313t-manylinux_x86_64 cp312-manylinux_x86_64 cp311-manylinux_x86_64 cp310-manylinux_x86_64 cp39-manylinux_x86_64 cp38-manylinux_x86_64 cp37-manylinux_x86_64 cp36-manylinux_x86_64" CIBW_BEFORE_BUILD="yum install -y boost-devel" cibuildwheel --platform linux --output-dir wheelhouse
+CIBW_SKIP="pp310-manylinux_i686 pp39-manylinux_i686 pp38-manylinux_i686 pp37-manylinux_i686 pp36-manylinux_i686 pp310-manylinux_x86_64  pp39-manylinux_x86_64 pp38-manylinux_x86_64  pp37-manylinux_x86_64 pp36-manylinux_x86_64" CIBW_BEFORE_BUILD="yum install -y boost-devel" cibuildwheel --platform linux --output-dir wheelhouse
+```
+
+
+
+## C++ library
+
 
 A library for writing procedural computer vision code in C++
 
@@ -28,7 +68,7 @@ histogram = pybilde.lbp_features(img, 8, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 import pybilde
 import skimage
 img = skimage.data.coins()
-cc_img = pybilde.label_connected_components(img>.5)
+cc_img, nb_components = pybilde.label_connected_components(img>.5)
 ```
 
 
@@ -70,14 +110,3 @@ cd src
 make lbpFeatures2
 ```
 
-## Python extention (pybilde)
-* Install build dependencies
-```bash
-pip install cibuildwheel
-```
-
-Build bdist without a CI
-```bash
-CIBW_BUILD="cp313t-manylinux_x86_64 cp313t-manylinux_x86_64 cp312-manylinux_x86_64 cp311-manylinux_x86_64 cp310-manylinux_x86_64 cp39-manylinux_x86_64 cp38-manylinux_x86_64 cp37-manylinux_x86_64 cp36-manylinux_x86_64" CIBW_BEFORE_BUILD="yum install -y boost-devel" cibuildwheel --platform linux --output-dir wheelhouse
-CIBW_SKIP="pp310-manylinux_i686 pp39-manylinux_i686 pp38-manylinux_i686 pp37-manylinux_i686 pp36-manylinux_i686 pp310-manylinux_x86_64  pp39-manylinux_x86_64 pp38-manylinux_x86_64  pp37-manylinux_x86_64 pp36-manylinux_x86_64" CIBW_BEFORE_BUILD="yum install -y boost-devel" cibuildwheel --platform linux --output-dir wheelhouse
-```
